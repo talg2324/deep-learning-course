@@ -23,8 +23,8 @@ def load_model_from_config(config, ckpt):
 
 
 def get_model():
-    config = OmegaConf.load("./latent-diffusion/models/ldm/cin256/config.yaml")
-    model = load_model_from_config(config, "./latent-diffusion/models/ldm/cin256/model.ckpt")
+    config = OmegaConf.load("latent-diffusion/configs/latent-diffusion/cin256-v2.yaml")  
+    model = load_model_from_config(config, "latent-diffusion/models/ldm/cin256-v2/model.ckpt")
     return model.to(device)
 
 if __name__ == "__main__":
@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     with torch.no_grad():
         with model.ema_scope():
-            x0 = torch.tensor(n_samples*[999], device=device)
+            x0 = torch.tensor(n_samples*[1000], device=device)
             xc = torch.tensor(n_samples*[class_label], device=device)
 
             uc = model.get_learned_conditioning({model.cond_stage_key: x0})
@@ -50,7 +50,7 @@ if __name__ == "__main__":
             samples_ddim, _ = sampler.sample(S=ddim_steps,
                                              conditioning=c,
                                              batch_size=n_samples,
-                                             shape=[4, 64, 64],
+                                             shape=[3, 64, 64],
                                              verbose=False,
                                              unconditional_guidance_scale=scale,
                                              unconditional_conditioning=uc, 
