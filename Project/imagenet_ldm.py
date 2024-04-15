@@ -9,7 +9,6 @@ from ldm.models.diffusion.ddim import DDIMSampler
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# device = torch.device('cpu')
 
 
 def load_model_from_config(config, ckpt):
