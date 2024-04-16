@@ -7,12 +7,13 @@ the below should allow you to pull a repo using SSH clone, and then push updates
 1. cd ~/.ssh && ssh-keygen
 2. cat id_rsa.pub
 3. copy the key to clipboard
-4. go to your github account settings page > SSH and GPG keys > New SSH key - paste the key.
-5. make sure to setup git username and email (not sure if necessary)
+4. go to your github account settings page > SSH and GPG keys > New SSH key.
+   paste the key.
+6. make sure to setup git username and email (not sure if necessary)
 git config --global user.name "your.name"
 git config --global user.email your@mail.com
-6. eval $(ssh-agent -s)
-7. ssh-add ~/.ssh/id_rsa
+7. eval $(ssh-agent -s)
+8. ssh-add ~/.ssh/id_rsa
 
 ## Clone the repo
 1. git clone https://github.com/talg2324/deep-learning-course.git
