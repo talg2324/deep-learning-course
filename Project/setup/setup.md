@@ -37,3 +37,9 @@ the below should allow you to pull a repo using SSH clone, and then push updates
 
 ## GCSFuse Instructions
 13. https://cloud.google.com/storage/docs/gcsfuse-quickstart-mount-bucket
+14. Make sure to use the --implicit-dirs flag: gcsfuse --implicit-dirs [YOUR_BUCKET] /path/to/your/local/dir/
+
+## Train LDM
+15. Start a train run with using the --resume flag. A log directory will be generated in latent-diffusion/logs/
+16. Run hack_cinmodel.py with the name of this directory to overwrite the model weights with pre-trained cin-256v2
+17. Now run train_ldm.sh
