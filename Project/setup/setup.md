@@ -34,3 +34,6 @@ the below should allow you to pull a repo using SSH clone, and then push updates
 ## Get the pre-trained model
 11. mkdir -p latent-diffusion/models/ldm/cin256-v2/
 12. wget -O latent-diffusion/models/ldm/cin256-v2/model.ckpt https://ommer-lab.com/files/latent-diffusion/nitro/cin/model.ckpt
+
+## GCSFuse Instructions
+13. https://cloud.google.com/storage/docs/gcsfuse-quickstart-mount-bucket
