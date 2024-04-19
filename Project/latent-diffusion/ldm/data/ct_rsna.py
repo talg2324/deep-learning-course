@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
+import torch
 from torchvision import transforms
 
 
@@ -38,18 +39,19 @@ class CTDataset(Dataset):
         if self.transform:
             im = self.transform(im)
 
+        # TODO - decide if we want the data to have mean=0, std=1, or to be in the range [-1, 1].. it is much different
         # rescale image dynamic range to [-1, 1]
         im = self.rescale_im_dynamic_range(im)
 
-        # Grayscale to RGB and remap to [-1, 1]
-        im = np.stack((im, im, im), axis=0)
+        # Grayscale to RGB
+        im = torch.stack((im, im, im), axis=1)
 
         return {'image': im, 'class_label': label}
 
     @staticmethod
     def rescale_im_dynamic_range(im):
-        im_min = np.min(im)
-        im_max = np.max(im)
+        im_min = im.min()
+        im_max = im.max()
         im = (im - im_min) / (im_max - im_min)
-        im = (2 * im) - 1
+
         return im
