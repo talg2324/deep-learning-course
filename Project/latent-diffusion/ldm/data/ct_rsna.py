@@ -46,7 +46,9 @@ class CTDataset(Dataset):
         # Grayscale to RGB
         im = torch.stack((im, im, im), axis=-1).squeeze()
 
-        return {'image': im, 'class_label': label}
+        human_label = self.class_names[int(label)]
+
+        return {'image': im, 'class_label': label, 'human_label': human_label}
 
     @staticmethod
     def rescale_im_dynamic_range(im):
