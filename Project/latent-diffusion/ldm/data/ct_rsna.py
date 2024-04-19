@@ -52,6 +52,6 @@ class CTDataset(Dataset):
     def rescale_im_dynamic_range(im):
         im_min = im.min()
         im_max = im.max()
-        im = (im - im_min) / (im_max - im_min)
+        im = 2 * ((im - im_min) / (im_max - im_min)) - 1
 
         return im
