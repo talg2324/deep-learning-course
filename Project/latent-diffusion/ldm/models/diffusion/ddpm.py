@@ -111,6 +111,7 @@ class DDPM(pl.LightningModule):
         self.learn_logvar = learn_logvar
         print("$$$$$$$$$$$$$$      init logvar")
         self.logvar = torch.full(fill_value=logvar_init, size=(self.num_timesteps,), device=self.device)
+        print(f"self device: {self.device}")
         print(f"logvar device: {self.logvar.get_device()}")
         if self.learn_logvar:
             self.logvar = nn.Parameter(self.logvar, requires_grad=True)
