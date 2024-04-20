@@ -49,6 +49,17 @@ class CTDataset(Dataset):
         human_label = self.class_names[int(label)]
 
         return {'image': im, 'class_label': label, 'human_label': human_label}
+    
+    class CTOverfit(CTDataset):
+        """
+        Class for testing model overfit capability 
+        """
+        def __init__(self, data_dir, labels_file, size, flip_prob) -> None:
+            super().__init__(data_dir, labels_file, size, flip_prob)
+
+        def __len__(self):
+            return 5
+
 
     @staticmethod
     def rescale_im_dynamic_range(im):

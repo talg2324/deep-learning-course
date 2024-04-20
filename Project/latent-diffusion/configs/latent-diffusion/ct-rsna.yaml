@@ -74,14 +74,14 @@ data:
     num_workers: 5
     wrap: false
     train:
-      target: ldm.data.ct_rsna.CTDataset
+      target: ldm.data.ct_rsna.CTOverfit
       params:
         data_dir: "../data/ct-rsna/train/"
         labels_file: "train_set.csv"
         size: 256
         flip_prob: 0.5
     validation:
-      target: ldm.data.ct_rsna.CTDataset
+      target: ldm.data.ct_rsna.CTOverfit
       params:
         data_dir: "../data/ct-rsna/validation/"
         labels_file: "validation_set.csv"
