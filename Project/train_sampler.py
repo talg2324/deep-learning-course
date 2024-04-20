@@ -5,7 +5,7 @@ import sys
 
 def reduce_and_save_csv(input_path, output_path, sample_frac):
     # Load the CSV into a DataFrame
-    df = pd.read_csv(input_path, index_col=0)
+    df = pd.read_csv(input_path)
 
     # Randomly sample the DataFrame
     sampled_df = df.sample(frac=sample_frac, random_state=42)  # You can change the random_state for different results
