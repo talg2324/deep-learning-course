@@ -2,9 +2,10 @@ import pandas as pd
 import os
 import sys
 
+
 def reduce_and_save_csv(input_path, output_path, sample_frac):
     # Load the CSV into a DataFrame
-    df = pd.read_csv(input_path)
+    df = pd.read_csv(input_path, index_col=0)
 
     # Randomly sample the DataFrame
     sampled_df = df.sample(frac=sample_frac, random_state=42)  # You can change the random_state for different results
@@ -17,7 +18,7 @@ def reduce_and_save_csv(input_path, output_path, sample_frac):
 
 if __name__ == '__main__':
     curr_dir = os.getcwd()
-    assert curr_dir.split()[-1] == 'Project', "this script must be ran from Project directory!"
+    assert curr_dir.split('/')[-1] == 'Project', "this script must be ran from Project directory!"
 
     if len(sys.argv) != 2:
         print("Usage: python train_sampler.py <sampling frac>")
@@ -25,12 +26,9 @@ if __name__ == '__main__':
     sample_frac = float(sys.argv[1])
     assert 0 < sample_frac < 1, f"sampling frac must be between 0 to 1"
 
-    reduced_train = f"data/ct-rsna/reduced_{int(100 * sample_frac)}_train_set.csv"
-    reduced_val = f"data/ct-rsna/reduced_{int(100 * sample_frac)}_validation_set.csv"
-    assert (not os.path.isfile(reduced_train),
-            f"already performed the requested reduction. "
-            f"delete the files: {reduced_train, reduced_val}, and rerun.")
-
+    reduced_train = f"data/ct-rsna/train/reduced_{int(100 * sample_frac)}pcg_train_set.csv"
+    reduced_val = f"data/ct-rsna/validation/reduced_{int(100 * sample_frac)}pcg_validation_set.csv"
+    assert not os.path.isfile(reduced_train), f"already performed the requested reduction. delete the files: {reduced_train, reduced_val}, and rerun."
 
     # sample train
     train_file_path = "data/ct-rsna/train/train_set.csv"
