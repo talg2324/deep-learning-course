@@ -5,8 +5,8 @@ model:
     linear_start: 0.0015
     linear_end: 0.0195
     num_timesteps_cond: 1
-    log_every_t: 200
-    timesteps: 1000
+    log_every_t: 250
+    timesteps: 500
     first_stage_key: image
     cond_stage_key: class_label
     image_size: 64
@@ -69,8 +69,8 @@ model:
 data:
   target: main.DataModuleFromConfig
   params:
-    batch_size: 1
-    num_workers: 5
+    batch_size: 8
+    num_workers: 2
     wrap: false
     train:
       target: ldm.data.ct_rsna.CTOverfit
