@@ -17,25 +17,26 @@ def reduce_and_save_csv(input_path, output_path, sample_frac):
 
 if __name__ == '__main__':
     curr_dir = os.getcwd()
-    assert curr_dir.split()[-1] == 'latent-diffusion', "this script must be ran from latent-diffusion directory!"
+    assert curr_dir.split()[-1] == 'Project', "this script must be ran from Project directory!"
 
     if len(sys.argv) != 2:
         print("Usage: python train_sampler.py <sampling frac>")
         sys.exit(1)
-    sample_frac = sys.argv[1]
+    sample_frac = float(sys.argv[1])
+    assert 0 < sample_frac < 1, f"sampling frac must be between 0 to 1"
 
-    reduced_train = f"../data/ct-rsna/reduced_{int(100 * frac)}_train_set.csv"
-    reduced_val = f"../data/ct-rsna/reduced_{int(100 * frac)}_validation_set.csv"
+    reduced_train = f"data/ct-rsna/reduced_{int(100 * sample_frac)}_train_set.csv"
+    reduced_val = f"data/ct-rsna/reduced_{int(100 * sample_frac)}_validation_set.csv"
     assert (not os.path.isfile(reduced_train),
             f"already performed the requested reduction. "
             f"delete the files: {reduced_train, reduced_val}, and rerun.")
 
 
     # sample train
-    train_file_path = "../data/ct-rsna/train/train_set.csv"
+    train_file_path = "data/ct-rsna/train/train_set.csv"
     reduce_and_save_csv(train_file_path, reduced_train, sample_frac)
 
     # sample val
-    val_file_path = "../data/ct-rsna/validation/validation_set.csv"
+    val_file_path = "data/ct-rsna/validation/validation_set.csv"
     reduced_val_file_path = reduced_val
     reduce_and_save_csv(val_file_path, reduced_val, sample_frac)
