@@ -22,23 +22,20 @@ if __name__ == '__main__':
     if len(sys.argv) != 2:
         print("Usage: python train_sampler.py <sampling frac>")
         sys.exit(1)
-    frac = sys.argv[1]
+    sample_frac = sys.argv[1]
 
-    reduced_path = f"../data/ct-rsna/reduced_{int(100 * frac)}_pcg"
-    assert (not os.path.exists(reduced_path),
+    reduced_train = f"../data/ct-rsna/reduced_{int(100 * frac)}_train_set.csv"
+    reduced_val = f"../data/ct-rsna/reduced_{int(100 * frac)}_validation_set.csv"
+    assert (not os.path.isfile(reduced_train),
             f"already performed the requested reduction. "
-            f"delete the directory: {reduced_path}, and rerun.")
+            f"delete the files: {reduced_train, reduced_val}, and rerun.")
 
-    os.mkdir(reduced_path)
 
     # sample train
     train_file_path = "../data/ct-rsna/train/train_set.csv"
-    reduced_train_file_path = os.path.join(reduced_path, "train_set.csv")
-    sample_frac = frac  # Percentage of data to sample (adjust as needed)
-
-    reduce_and_save_csv(train_file_path, reduced_train_file_path, sample_frac)
+    reduce_and_save_csv(train_file_path, reduced_train, sample_frac)
 
     # sample val
     val_file_path = "../data/ct-rsna/validation/validation_set.csv"
-    reduced_val_file_path = os.path.join(reduced_path,"validation_set.csv")
-    reduce_and_save_csv(val_file_path, reduced_val_file_path, sample_frac)
+    reduced_val_file_path = reduced_val
+    reduce_and_save_csv(val_file_path, reduced_val, sample_frac)
