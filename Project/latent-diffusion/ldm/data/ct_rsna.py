@@ -50,15 +50,15 @@ class CTDataset(Dataset):
 
         return {'image': im, 'class_label': label, 'human_label': human_label}
     
-    class CTOverfit(CTDataset):
-        """
-        Class for testing model overfit capability 
-        """
-        def __init__(self, data_dir, labels_file, size, flip_prob) -> None:
-            super().__init__(data_dir, labels_file, size, flip_prob)
+class CTOverfit(CTDataset):
+    """
+    Class for testing model overfit capability 
+    """
+    def __init__(self, data_dir, labels_file, size, flip_prob) -> None:
+        super().__init__(data_dir, labels_file, size, flip_prob)
 
-        def __len__(self):
-            return 5
+    def __len__(self):
+        return 5
 
 
     @staticmethod
