@@ -17,6 +17,7 @@ class DDIMSampler(object):
 
     def register_buffer(self, name, attr):
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print(f'device is {device}')
         if type(attr) == torch.Tensor:
             if attr.device != torch.device(device):
                 attr = attr.to(torch.device(device))
