@@ -1,1 +1,3 @@
-
+[submodule "Project/taming-transformers"]
+	path = Project/taming-transformers
+	url = https://github.com/CompVis/taming-transformers.git
