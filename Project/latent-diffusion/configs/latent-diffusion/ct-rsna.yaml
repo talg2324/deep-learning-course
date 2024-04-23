@@ -66,6 +66,7 @@ model:
         n_classes: 6
         embed_dim: 512
         key: class_label
+
 data:
   target: main.DataModuleFromConfig
   params:
@@ -86,3 +87,15 @@ data:
         labels_file: "validation_set.csv"
         size: 256
         flip_prob: 0
+
+lightning:
+  modelcheckpoint:
+    target: pytorch_lightning.callbacks.ModelCheckpoint
+    params:
+      every_n_epochs: 15
+  callbacks:
+    image_logger:
+      target: main.ImageLogger
+      params:
+        batch_frequency: 1000
+        log_on_batch_idx: true

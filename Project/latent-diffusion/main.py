@@ -572,8 +572,7 @@ if __name__ == "__main__":
                 "dirpath": ckptdir,
                 "filename": "{epoch:06}",
                 "verbose": True,
-                "save_last": True,
-                "every_n_epochs": 10,
+                "save_last": True
             }
         }
         if hasattr(model, "monitor"):
@@ -609,8 +608,7 @@ if __name__ == "__main__":
                 "params": {
                     "batch_frequency": 750,
                     "max_images": 4,
-                    "clamp": True,
-                    "log_on_batch_idx": True,
+                    "clamp": True
                 }
             },
             "learning_rate_logger": {
@@ -724,7 +722,8 @@ if __name__ == "__main__":
                 raise
         if not opt.no_test and not trainer.interrupted:
             trainer.test(model, data)
-    except Exception:
+    except Exception as e:
+        print(f'Exception: {e}')
         if opt.debug and trainer.global_rank == 0:
             try:
                 import pudb as debugger
