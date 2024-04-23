@@ -573,6 +573,7 @@ if __name__ == "__main__":
                 "filename": "{epoch:06}",
                 "verbose": True,
                 "save_last": True,
+                "every_n_epochs": 10,
             }
         }
         if hasattr(model, "monitor"):
@@ -608,7 +609,8 @@ if __name__ == "__main__":
                 "params": {
                     "batch_frequency": 750,
                     "max_images": 4,
-                    "clamp": True
+                    "clamp": True,
+                    "log_on_batch_idx": True,
                 }
             },
             "learning_rate_logger": {
