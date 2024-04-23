@@ -1,6 +1,1 @@
-[submodule "Project/taming-transformers"]
-	path = Project/taming-transformers
-	url = https://github.com/CompVis/taming-transformers
-[submodule "Project/latent-diffusion"]
-	path = Project/latent-diffusion
-	url = https://github.com/CompVis/latent-diffusion.git
+
