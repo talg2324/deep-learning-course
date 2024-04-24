@@ -17,7 +17,7 @@ if __name__ == "__main__":
     del state_dict['model_ema.decay'], state_dict['model_ema.num_updates']
 
     
-    log_dir = os.path.join('./latent-diffusion/logs', sys.argv[1])
+    log_dir = os.path.join('./data/outputs', sys.argv[1])
     log_file = os.path.join(log_dir, 'checkpoints/last.ckpt')
     dst = torch.load(log_file)
 
