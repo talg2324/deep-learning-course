@@ -21,4 +21,4 @@ python main.py \
   --max_epochs 70 \
   --num_sanity_val_steps 0 \
   --logdir ../data/outputs \
-  --resume logs/${name}/checkpoints/last.ckpt
+  --resume ${name}/checkpoints/last.ckpt
