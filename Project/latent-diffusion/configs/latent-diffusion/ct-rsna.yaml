@@ -93,9 +93,13 @@ lightning:
     target: pytorch_lightning.callbacks.ModelCheckpoint
     params:
       every_n_epochs: 10
+
   callbacks:
     image_logger:
       target: main.ImageLogger
       params:
         batch_frequency: 1000
         log_on_batch_idx: true
+
+  trainer:
+    max_epochs: 5
