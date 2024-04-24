@@ -16,10 +16,14 @@ if __name__ == "__main__":
     state_dict['cond_stage_model.embedding.weight'] = torch.randn(6, 512, dtype=torch.float32)
     del state_dict['model_ema.decay'], state_dict['model_ema.num_updates']
 
-    
+    # Output
     log_dir = os.path.join('./data/outputs', sys.argv[1])
     log_file = os.path.join(log_dir, 'checkpoints/last.ckpt')
-    dst = torch.load(log_file)
 
+    print(f'Copying weights from {path_to_model_weights} to {log_file}...')
+
+    dst = torch.load(log_file)
     dst['state_dict'] = state_dict
     torch.save(dst, log_file)
+
+    print('Done copying weights')
