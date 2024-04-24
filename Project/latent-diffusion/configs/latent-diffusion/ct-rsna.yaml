@@ -100,6 +100,7 @@ lightning:
       params:
         batch_frequency: 1000
         log_on_batch_idx: true
+        increase_log_steps: false
 
   trainer:
     max_epochs: 5
