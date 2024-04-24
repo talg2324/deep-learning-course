@@ -92,7 +92,7 @@ lightning:
   modelcheckpoint:
     target: pytorch_lightning.callbacks.ModelCheckpoint
     params:
-      every_n_epochs: 10
+      every_n_epochs: 50
 
   callbacks:
     image_logger:
