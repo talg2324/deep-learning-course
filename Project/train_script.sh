@@ -7,4 +7,5 @@ python main.py \
   --gpus 0, \
   --max_epochs 5 \
   --num_sanity_val_steps 0 \
+  --logdir ../data/outputs
 #   --resume logs/2024-04-18T18-57-41_ct-rsna/checkpoints/last.ckpt
