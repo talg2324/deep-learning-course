@@ -70,7 +70,7 @@ model:
 data:
   target: main.DataModuleFromConfig
   params:
-    batch_size: 4
+    batch_size: 8
     num_workers: 2
     wrap: false
     train:
@@ -84,7 +84,7 @@ data:
       target: ldm.data.ct_rsna.CTOverfit
       params:
         data_dir: "../data/ct-rsna/validation/"
-        labels_file: "validation_set.csv"
+        labels_file: "train_set.csv"
         size: 256
         flip_prob: 0
 
