@@ -41,7 +41,7 @@ class CTDataset(Dataset):
 
         # TODO - decide if we want the data to have mean=0, std=1, or to be in the range [-1, 1].. it is much different
         # rescale image dynamic range to [-1, 1]
-        im = self.rescale_im_dynamic_range(im)
+        im = rescale_im_dynamic_range(im)
 
         # Grayscale to RGB
         im = torch.stack((im, im, im), axis=-1).squeeze()
@@ -61,10 +61,8 @@ class CTOverfit(CTDataset):
         return 16
 
 
-    @staticmethod
-    def rescale_im_dynamic_range(im):
-        im_min = im.min()
-        im_max = im.max()
-        im = 2 * ((im - im_min) / (im_max - im_min)) - 1
-
-        return im
+def rescale_im_dynamic_range(im):
+    im_min = im.min()
+    im_max = im.max()
+    im = 2 * ((im - im_min) / (im_max - im_min)) - 1
+    return im
