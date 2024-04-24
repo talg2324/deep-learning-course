@@ -70,7 +70,7 @@ model:
 data:
   target: main.DataModuleFromConfig
   params:
-    batch_size: 8
+    batch_size: 16
     num_workers: 2
     wrap: false
     train:
@@ -98,6 +98,6 @@ lightning:
     image_logger:
       target: main.ImageLogger
       params:
-        batch_frequency: 1000
+        batch_frequency: 3200
         log_on_batch_idx: true
         increase_log_steps: false
