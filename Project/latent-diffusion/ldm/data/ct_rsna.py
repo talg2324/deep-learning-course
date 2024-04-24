@@ -58,7 +58,7 @@ class CTOverfit(CTDataset):
         super().__init__(data_dir, labels_file, size, flip_prob)
 
     def __len__(self):
-        return 512
+        return 16
 
 
 def rescale_im_dynamic_range(im):
