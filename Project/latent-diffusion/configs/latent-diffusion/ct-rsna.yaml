@@ -83,7 +83,7 @@ data:
     validation:
       target: ldm.data.ct_rsna.CTOverfit
       params:
-        data_dir: "../data/ct-rsna/validation/"
+        data_dir: "../data/ct-rsna/train/"
         labels_file: "train_set.csv"
         size: 256
         flip_prob: 0
