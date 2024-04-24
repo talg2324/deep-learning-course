@@ -5,10 +5,6 @@
 echo "Please enter the experiment name:"
 read name
 
-echo "Copying base model..."
-# Copy the directory to use the provided name
-cp -r ./data/outputs/base-model/ ./data/outputs/${name}
-
 ## Training
 echo "Training ${name}..."
 cd latent-diffusion
@@ -21,4 +17,5 @@ python main.py \
   --max_epochs 70 \
   --num_sanity_val_steps 0 \
   --logdir ../data/outputs \
-  --resume ../data/outputs/${name}/checkpoints/last.ckpt
+  --name ${name} \
+  --resume_from_checkpoint ../data/outputs/base-model/checkpoints/last.ckpt"
