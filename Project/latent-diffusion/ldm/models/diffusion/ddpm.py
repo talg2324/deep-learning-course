@@ -6,8 +6,6 @@ https://github.com/CompVis/taming-transformers
 -- merci
 """
 
-import pdb
-
 import torch
 import torch.nn as nn
 import numpy as np
@@ -1030,9 +1028,6 @@ class LatentDiffusion(DDPM):
 
         loss_simple = self.get_loss(model_output, target, mean=False).mean([1, 2, 3])
         loss_dict.update({f'{prefix}/loss_simple': loss_simple.mean()})
-
-        if torch.isnan(loss_simple).any():
-            pdb.set_trace()
 
         logvar_on_valid_device = self.logvar.to(self.device)
         logvar_t = logvar_on_valid_device[t]

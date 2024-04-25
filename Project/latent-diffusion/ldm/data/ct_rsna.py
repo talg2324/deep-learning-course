@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 import torch
 from torchvision import transforms
 
+import pdb
 
 class CTDataset(Dataset):
     def __init__(self, data_dir, labels_file, size, flip_prob) -> None:
@@ -47,6 +48,9 @@ class CTDataset(Dataset):
         im = torch.stack((im, im, im), axis=-1).squeeze()
 
         human_label = self.class_names[int(label)]
+        
+        if torch.isnan(im).any():
+            pdb.set_trace()
 
         return {'image': im, 'class_label': label, 'human_label': human_label}
     
