@@ -18,4 +18,4 @@ python main.py \
   --num_sanity_val_steps 0 \
   --logdir ../data/outputs \
   --name ${name} \
-  --resume_from_checkpoint ../data/outputs/base-model/checkpoints/last.ckpt
+  --resume_from_checkpoint ../data/outputs/overfit_30epochs/checkpoints/init_hacked.ckpt
