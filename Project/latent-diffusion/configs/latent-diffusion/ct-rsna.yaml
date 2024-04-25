@@ -11,7 +11,7 @@ model:
     cond_stage_key: class_label
     image_size: 64
     channels: 3
-    cond_stage_trainable: true
+    cond_stage_trainable: false
     conditioning_key: crossattn
     monitor: val/loss
     use_ema: False
