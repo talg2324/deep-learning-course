@@ -1,11 +1,10 @@
 import os
+import torch
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
-import torch
 from torchvision import transforms
 
-import pdb
 
 class CTDataset(Dataset):
     def __init__(self, data_dir, labels_file, size, flip_prob) -> None:
@@ -48,9 +47,6 @@ class CTDataset(Dataset):
         im = torch.stack((im, im, im), axis=-1).squeeze()
 
         human_label = self.class_names[int(label)]
-        
-        if torch.isnan(im).any():
-            pdb.set_trace()
 
         return {'image': im, 'class_label': label, 'human_label': human_label}
     
@@ -69,5 +65,8 @@ class CTSubset(CTDataset):
 def rescale_im_dynamic_range(im):
     im_min = im.min()
     im_max = im.max()
-    im = 2 * ((im - im_min) / (im_max - im_min)) - 1
+    if im_min == im_max:
+        return torch.zeros_like(im)
+    else:
+        im = 2 * ((im - im_min) / (im_max - im_min)) - 1
     return im
