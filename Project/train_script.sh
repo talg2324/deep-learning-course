@@ -16,6 +16,7 @@ python main.py \
   --gpus 0, \
   --max_epochs 20 \
   --num_sanity_val_steps 0 \
+  --scale_lr False \
   --logdir ../data/outputs \
   --name ${name} \
   --resume_from_checkpoint ../data/outputs/overfit_30epochs/checkpoints/init_hacked_passthrough.ckpt
