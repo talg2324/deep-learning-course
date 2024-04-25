@@ -11,7 +11,7 @@ model:
     cond_stage_key: class_label
     image_size: 64
     channels: 3
-    cond_stage_trainable: false
+    cond_stage_trainable: true # change to false for pass-through embedding
     conditioning_key: crossattn
     monitor: val/loss
     use_ema: False
@@ -83,8 +83,8 @@ data:
     validation:
       target: ldm.data.ct_rsna.CTOverfit
       params:
-        data_dir: "../data/ct-rsna/train/"
-        labels_file: "train_set.csv"
+        data_dir: "../data/ct-rsna/validation/"
+        labels_file: "validation_set.csv"
         size: 256
         flip_prob: 0
 
