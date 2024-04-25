@@ -14,7 +14,7 @@ python main.py \
   --base configs/latent-diffusion/ct-rsna.yaml \
   -t \
   --gpus 0, \
-  --max_epochs 70 \
+  --max_epochs 30 \
   --num_sanity_val_steps 0 \
   --logdir ../data/outputs \
   --name ${name} \
