@@ -50,15 +50,16 @@ class CTDataset(Dataset):
 
         return {'image': im, 'class_label': label, 'human_label': human_label}
     
-class CTOverfit(CTDataset):
+class CTSubset(CTDataset):
     """
-    Class for testing model overfit capability 
+    Class for testing model on part of the data 
     """
-    def __init__(self, data_dir, labels_file, size, flip_prob) -> None:
+    def __init__(self, data_dir, labels_file, size, flip_prob, subset_len) -> None:
         super().__init__(data_dir, labels_file, size, flip_prob)
+        self.subset_len = subset_len
 
     def __len__(self):
-        return 512
+        return self.subset_len
 
 
 def rescale_im_dynamic_range(im):
