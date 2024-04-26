@@ -109,6 +109,6 @@ lightning:
     image_logger:
       target: main.ImageLogger
       params:
-        batch_frequency: 64
-        log_on_batch_idx: True
+        batch_frequency: 192  # Every 3 epochs
+        log_on_batch_idx: false
         increase_log_steps: false
