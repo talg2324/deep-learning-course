@@ -12,7 +12,12 @@ if __name__ == "__main__":
     path_to_model = sys.argv[1]
     # The model we want to use
     src = torch.load(path_to_model)
-    dst = {'state_dict': src['state_dict']}
+    dst = {
+        'state_dict': src['state_dict'],
+        'global_step': src['global_step'],
+        'pytorch-lightning_version': src['pytorch-lightning_version'],
+        'callbacks': src['callbacks'],
+    }
     path_to_model_weights_only = path_to_model.split(".")[0] + "_weights_only.ckpt"
     torch.save(dst, path_to_model_weights_only)
 
