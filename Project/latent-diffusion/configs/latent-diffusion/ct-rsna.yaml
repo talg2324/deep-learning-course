@@ -11,7 +11,7 @@ model:
     cond_stage_key: class_label
     image_size: 64
     channels: 3
-    cond_stage_trainable: true
+    cond_stage_trainable: false
     conditioning_key: crossattn
     monitor: val/loss
     use_ema: False
@@ -92,7 +92,7 @@ lightning:
   modelcheckpoint:
     target: pytorch_lightning.callbacks.ModelCheckpoint
     params:
-      every_n_epochs: 10
+      every_n_epochs: 50
 
   callbacks:
     image_logger:
@@ -101,3 +101,4 @@ lightning:
         batch_frequency: 3200
         log_on_batch_idx: true
         increase_log_steps: false
+        disabled: true

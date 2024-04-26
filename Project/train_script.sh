@@ -7,7 +7,8 @@ read name
 
 echo "Copying base model..."
 # Copy the directory to use the provided name
-cp -r ./data/outputs/base-model/ ./data/outputs/${name}
+mkdir -p ./latent-diffusion/logs/${name}
+cp -r ./data/outputs/base-model/* latent-diffusion/logs/${name}/.
 
 ## Training
 echo "Training ${name}..."
@@ -18,7 +19,7 @@ python main.py \
   --base configs/latent-diffusion/ct-rsna.yaml \
   -t \
   --gpus 0, \
-  --max_epochs 70 \
+  --max_epochs 300 \
   --num_sanity_val_steps 0 \
-  --logdir ../data/outputs \
-  --resume ../data/outputs/${name}/checkpoints/last.ckpt
+  --logdir logs \
+  --resume logs/${name}/checkpoints/last.ckpt
