@@ -572,7 +572,8 @@ if __name__ == "__main__":
             "dirpath": ckptdir,
             "filename": "{epoch:06}",
             "verbose": True,
-            "save_last": True
+            "save_last": True,
+            "save_weights_only": True,
         }
     }
     if hasattr(model, "monitor"):
