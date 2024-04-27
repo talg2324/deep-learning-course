@@ -7,7 +7,7 @@ read ckpt_file_path
 
 ## Training
 echo "copying weights from ${ckpt_file_path}..."
-n_weight_only_files=`echo ${ckpt_file_path%/*}`
+n_weight_only_files=`ls ${ckpt_file_path%/*} | grep weights | wc -l`
 python save_model_weights_only.py ${ckpt_file_path}
 hacked_weights_ckpt_path=`echo "${ckpt_file_path//.ckpt/_weights_only_${n_weight_only_files}.ckpt}"`
 echo "continuing training with ${hacked_weights_ckpt_path}"
