@@ -1048,7 +1048,7 @@ class LatentDiffusion(DDPM):
         return loss, loss_dict
 
     def p_mean_variance(self, x, c, t, clip_denoised: bool, return_codebook_ids=False, quantize_denoised=False,
-                        return_x0=False, score_corrector=None, corrector_kwargs=None):
+                        return_x0=False, score_corrector=None, corrector_kwargs=None, return_model_output=False):
         t_in = t
         model_out = self.apply_model(x, t_in, c, return_ids=return_codebook_ids)
 
@@ -1075,6 +1075,8 @@ class LatentDiffusion(DDPM):
             return model_mean, posterior_variance, posterior_log_variance, logits
         elif return_x0:
             return model_mean, posterior_variance, posterior_log_variance, x_recon
+        elif return_model_output:
+            return model_mean, posterior_variance, posterior_log_variance, model_out
         else:
             return model_mean, posterior_variance, posterior_log_variance
 
