@@ -19,4 +19,4 @@ python main.py \
   --scale_lr False \
   --logdir ../data/outputs \
   --name ${name} \
-  --resume_from_checkpoint ../data/outputs/overfit_30epochs/checkpoints/init_hacked_passthrough_lrscheduler.ckpt
+  --resume_from_checkpoint ../data/outputs/overfit_30epochs/checkpoints/init_hacked_last.ckpt
