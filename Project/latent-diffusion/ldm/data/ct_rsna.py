@@ -26,7 +26,7 @@ class CTDataset(Dataset):
 
         labels = labels.iloc[:, 1:]
         labels['any'] = 1 - labels['any']
-        self.labels = labels.apply(lambda x: np.flatnonzero(x)[0], axis=1).to_numpy()
+        self.labels = labels.drop('ID', axis=1).apply(lambda x: np.flatnonzero(x)[-1], axis=1).to_numpy()
 
     def __len__(self):
         return self.labels.shape[0]
