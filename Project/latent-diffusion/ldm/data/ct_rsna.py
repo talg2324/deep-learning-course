@@ -11,7 +11,10 @@ class CTDataset(Dataset):
         super().__init__()
 
         labels = pd.read_csv(os.path.join(data_dir, labels_file))
-        labels = labels.drop(['sum', 'Unnamed: 0'], axis=1)
+        labels = labels.sample(frac=1)
+
+        unnamed = [c for c in labels.columns if 'Unnamed' in c]
+        labels = labels.drop(['sum'] + unnamed, axis=1)
         self.ids = labels['ID']
         self.data_dir = data_dir
 
@@ -26,7 +29,17 @@ class CTDataset(Dataset):
 
         labels = labels.iloc[:, 1:]
         labels['any'] = 1 - labels['any']
-        self.labels = labels.drop('ID', axis=1).apply(lambda x: np.flatnonzero(x)[-1], axis=1).to_numpy()
+        self.labels = labels.apply(lambda x: np.flatnonzero(x)[-1], axis=1).to_numpy()
+
+    def class_distribution(self, file_name, labels):
+        nbins = len(self.class_names)
+        counts, _ = np.histogram(labels, bins=nbins)
+        prob = 100 * counts / counts.sum()
+
+        print(f'Data source: {file_name}')
+        for c in range(nbins):
+            print(f'    Class {self.class_names[c]}: {prob[c]:.1f}%')
+
 
     def __len__(self):
         return self.labels.shape[0]
@@ -57,6 +70,7 @@ class CTSubset(CTDataset):
     def __init__(self, data_dir, labels_file, size, flip_prob, subset_len) -> None:
         super().__init__(data_dir, labels_file, size, flip_prob)
         self.subset_len = subset_len
+        self.class_distribution(labels_file, self.labels[:subset_len])
 
     def __len__(self):
         return self.subset_len
