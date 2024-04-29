@@ -17,12 +17,26 @@ def mean_flat(tensor):
 
 
 class LdmClassifier:
+    """
+    wrapper class for LatentDiffusion model class.
+    LdmClassifier implements the code from: https://github.com/diffusion-classifier/diffusion-classifier/tree/master
+    in a custom manner for LatentDiffusion class.
+
+    LdmClassifier allows to use the diffusion model as a classifier based on: https://arxiv.org/abs/2303.16203
+    """
     def __init__(self,
                  model: LatentDiffusion,
-                 n_noise_samples: int = 1024):
+                 n_noise_samples: int = 1024,
+                 random_seed: int = 42):
+        """
+        :param model: pretrained LatentDiffusion to use a classifier
+        :param n_noise_samples: the classifier uses the same noise realizations for all predictions.
+                                n_noise_samples should be greater or equal w.r.t the number of diffusion time steps
+        """
         self._model = model
+        assert n_noise_samples >= model.num_timesteps, f"n_noise_samples: {n_noise_samples} must be greater or equal from model.num_timesteps: {model.num_timesteps}"
         self._n_noise_samples = n_noise_samples
-
+        self._random_seed = random_seed
         self.gen_noise()
 
     @property
@@ -35,11 +49,18 @@ class LdmClassifier:
 
     @property
     def input_dims(self):
+        """
+        returns the input dims for the model CxHxW (ignoring the batch dimension)
+        """
         return self._model.channels, self._model.image_size, self._model.image_size
 
     def gen_noise(self):
+        """
+        generate noise for diffusion classification
+        """
         c, h, w = self.input_dims
-        self._noise = torch.randn(self.n_noise_samples, c, h, w)
+        self._noise = torch.randn(self.n_noise_samples, c, h, w,
+                                  generator=torch.Generator().manual_seed(self._random_seed))
 
     @property
     def noise(self):
@@ -50,17 +71,38 @@ class LdmClassifier:
         return self._model.num_timesteps
 
     @staticmethod
-    def get_class_hypotheses_for_batch(batch_size, n_classes: int = 6):
+    def get_class_hypotheses_for_batch(batch_size: int, n_classes: int = 6):
+        """
+        creates a list of mock labels (for each valid class hypothesis).
+        this mock conditioning will be inserted to the diffusion model as class conditioning
+
+        :param batch_size: number of input samples in batch
+        :param n_classes: number of class hypotheses.
+        """
         c_hypotheses = [{'class_label': torch.tensor([c] * batch_size)} for c in range(n_classes)]
         return c_hypotheses
 
     def get_latent_batch(self, batch, n_classes: int = 6):
+        """
+        prepares input for the latent diffusion model.
+
+        :param batch: raw input batch from dataloader.
+                      assuming structure {
+                                            'image': List[torch.Tensor],
+                                            'class_label': List[torch.Tensor],
+                                            'human_label': List[str]
+                                         }
+        :param n_classes: number of class hypotheses to override to true class
+        """
         x0, c_true = self._model.get_input(batch, self._model.first_stage_key)
-        c_hypotheses = self.get_class_hypotheses_for_batch(batch_size=x0.shape[0])
+        c_hypotheses = self.get_class_hypotheses_for_batch(batch_size=x0.shape[0], n_classes=n_classes)
         return x0, c_hypotheses
 
     @staticmethod
     def get_classification_accuracy(pred_list, gt_list):
+        """
+        calculate classification accuracy
+        """
         n_samples = float(len(pred_list))
         n_correct = 0.
         for y_hat, y_gt in zip(pred_list, gt_list):
@@ -73,6 +115,18 @@ class LdmClassifier:
                          batch_size: int = 1,
                          n_trials: int = 1,
                          t_sampling_stride: int = 5):
+        """
+        perform classification for a given dataset using the latent diffusion model as classifier
+
+        :param dataset: dataset class object to iterate over and produce predictions
+        :param batch_size: TODO - need to revisit this param. currently set to 1.
+                            the source code does not seem to support inserting multiple different samples to the classifier.
+                            the batch seems to refer to temporal dimension of the diffusion
+        :param n_trials: number of trials to do for each sample. TODO - need to revisit how this is different than the batch...
+        :param t_sampling_stride: sampling rate of the diffusion time steps
+
+        :returns : List[L2 loss predictions], List[L1 loss predictions], List[gt]
+        """
         # TODO - add here verifications to the Dataset object to make sure it has the required attributes
         n_classes = len(dataset.labels)
 
@@ -96,6 +150,15 @@ class LdmClassifier:
                        c_hypotheses,
                        n_trials: int = 1,
                        t_sampling_stride: int = 5):
+        """
+        classify a single batch
+        :param x0: diffusion input (latent representation of the input batch)
+        :param c_hypotheses: conditioning hypothesis input
+        :param n_trials: number of trials to do for each sample. TODO - need to revisit how this is different than the batch...
+        :param t_sampling_stride: sampling rate of the diffusion time steps
+
+        :returns : torch.Tensor(L2 predicted label), torch.Tensor(L1 predicted label)
+        """
         l1_c_errs = []
         l2_c_errs = []
         for c_hypo in tqdm.auto.tqdm(c_hypotheses, desc="class hypothsis"):
@@ -112,6 +175,9 @@ class LdmClassifier:
 
     @staticmethod
     def extract_prediction_from_errs(errs_and_labels_list):
+        """
+        extract label prediction from noise errors of the diffusion model (output of eval_class_hypothesis_per_batch)
+        """
         sorted_errs_and_labels = sorted(errs_and_labels_list, key=lambda x: x[0])
         pred_label = sorted_errs_and_labels[0][1]
         return pred_label
@@ -129,6 +195,18 @@ class LdmClassifier:
                                         n_trials: int = 1,
                                         t_sampling_stride: int = 5,
                                         output_dtype: str = 'float32'):
+        """
+        runs the core algorithm of the classifier.
+        calculates noise prediction errors given the conditioning c.
+        returns noise prediction errors
+        TODO - currently L2, L1 only. VLB is not supported as LatentDiffusion does not predict the variance
+
+        :param x0: diffusion model input - latent representation of the input batch
+        :param c: conditioning
+        :param n_trials: number of trials to do for each sample. TODO - need to revisit how this is different than the batch...
+        :param t_sampling_stride: sampling rate of the diffusion time steps
+        :param output_dtype: optional - change dtype to float16 to be more memory efficient
+        """
         ts = []
         batch_size = x0.shape[0]
         pred_errors = torch.zeros(self.n_train_timesteps // t_sampling_stride * n_trials, 2, device='cpu')
@@ -142,10 +220,9 @@ class LdmClassifier:
                 batch_ts = torch.tensor(ts[idx: idx + batch_size]).to(self._model.device)
 
                 noise = self.noise[:len(batch_ts)]
-                # TODO - what is latent object on our code?
+
                 latent_ = x0.repeat(len(batch_ts), 1, 1, 1)
 
-                # TODO - what is diffusion object on our code?
                 noised_latent = self._model.q_sample(latent_, batch_ts, noise)
 
                 t_input = batch_ts.to(self._model.device).half() if output_dtype == 'float16' else batch_ts.to(
