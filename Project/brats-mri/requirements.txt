@@ -1,0 +1,3 @@
+lpips
+monai
+monai-generative
