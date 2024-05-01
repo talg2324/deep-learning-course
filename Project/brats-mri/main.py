@@ -1,65 +1,77 @@
-import os
 import sys
 import torch
 import monai
-from matplotlib import pyplot as plt
-from monai.bundle import ConfigParser
-from generative.networks.nets import DiffusionModelUNet
+from tqdm import tqdm
+from torch.utils.data import DataLoader
+from torch.optim import Adam
+from torch.cuda.amp import  autocast
 
-MODEL_NAME = 'brats_mri_axial_slices_generative_diffusion'
+from pretrained import load_autoencoder, load_unet
+import utils
 
-sys.path.append(MODEL_NAME)
+BUNDLE = 'brats_mri_class_cond'
+sys.path.append(BUNDLE)
+from scripts.inferer import LatentDiffusionInfererWithClassConditioning
+from scripts.utils import compute_scale_factor
+from scripts.ct_rsna import CTSubset
 
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+n_epochs = 10
+lr = 1e-5
+batch_size = 2
 
 if __name__ == "__main__":
-    
+
     monai.utils.set_determinism(seed=7)
-
-    # Download, unzip, load state dict
-    model_weights = monai.bundle.load(name=MODEL_NAME, bundle_dir="./")
-
-    # Load the config file containing function definitions
-    model_config_file = os.path.join(MODEL_NAME, "configs", "inference.json")
-    model_config = ConfigParser()
-    model_config.read_config(model_config_file)
-
-    model_config['bundle_root'] = MODEL_NAME
-    model_config['model_dir'] = os.path.join(MODEL_NAME, 'models')
+    utils.download_weights_if_not_already(BUNDLE)
+    train_loader = DataLoader(CTSubset('../data/ct-rsna/train/', 'train_set_dropped_nans.csv',
+                                        256, 0.5, 8), batch_size=batch_size)
 
     # Initialize models
-    device = model_config.get_parsed_content('device')
-    autoencoder = model_config.get_parsed_content('autoencoder')
+    autoencoder = load_autoencoder(BUNDLE)
+    unet = load_unet(BUNDLE)
 
-    # Build U-Net manually with class conditioning
-    net_params = model_config['network_def']  # Not all params are pre-evaluated
-    unet = DiffusionModelUNet(spatial_dims=model_config.get_parsed_content('spatial_dims'),
-                              in_channels=model_config['latent_channels'],
-                              out_channels=model_config['latent_channels'],
-                              num_channels=net_params['num_channels'],
-                              attention_levels=net_params['attention_levels'],
-                              num_head_channels=net_params['num_head_channels'],
-                              num_res_blocks=net_params['num_res_blocks'],
-                              with_conditioning=True,
-                              cross_attention_dim=1).to(device)
-    
-    # unet.load_state_dict(model_weights, strict=False)
+    # Train
+    config = utils.model_config(BUNDLE, 'train_diffusion.json')
+    scale_factor = compute_scale_factor(autoencoder, train_loader, device)
 
-    # Test
-    inferer = model_config.get_parsed_content('inferer')
-    scheduler = model_config.get_parsed_content('noise_scheduler')
-    latent_shape = model_config.get_parsed_content('latent_shape')
+    scheduler = config.get_parsed_content('noise_scheduler')
+    latent_shape = config.get_parsed_content('latent_shape')
 
-    # TODO:
-    # See if this helps:
-    # https://github.com/Project-MONAI/GenerativeModels/blob/main/tutorials/generative/classifier_free_guidance/2d_ddpm_classifier_free_guidance_tutorial.ipynb
+    inferer = LatentDiffusionInfererWithClassConditioning(scheduler, scale_factor)
 
-    class_conditioning = torch.zeros((1, 1), dtype=torch.float32, device=device)
+    optimizer = Adam(list(unet.parameters()) + list(autoencoder.parameters()), lr=lr)
+    L = torch.nn.MSELoss().to(device)
 
-    for i in range(1, 4):
-        noise = torch.randn([1] + latent_shape).to(device)
-        sample = inferer.sampling_fn(noise, autoencoder, unet, scheduler, conditioning=class_conditioning)
+    for e in range(1, n_epochs+1):
+        total_loss = 0
+        progress_bar = tqdm(enumerate(train_loader), total=len(train_loader))
+        progress_bar.set_description(f"Epoch {e}")
+        for step, batch in progress_bar:
+            ims = batch['image'].to(device)
+            labels = batch['class_label'].to(device)
+            optimizer.zero_grad(set_to_none=True)
+            with autocast(enabled=True):
+                # Generate random noise
+                noise = torch.randn([batch_size] + latent_shape, device=device)
 
-        plt.subplot(1, 3, i)
-        plt.imshow(sample.squeeze().cpu(), cmap='gray')
-        plt.axis('off')
-    plt.show()
+                # Create timesteps
+                timesteps = torch.randint(
+                    0, inferer.scheduler.num_train_timesteps, (ims.shape[0],), device=device
+                ).long()
+
+                # Get model prediction
+                noise_pred = inferer(inputs=ims,
+                                     autoencoder_model=autoencoder,
+                                     diffusion_model=unet,
+                                     noise=noise,
+                                     timesteps=timesteps,
+                                     class_labels=labels)
+
+                loss = L(noise_pred.float(), noise.float())
+                loss.backward()
+                optimizer.step()
+            total_loss += loss.item()
+
+            progress_bar.set_postfix({"loss": total_loss / (step + 1)})
