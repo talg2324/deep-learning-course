@@ -31,6 +31,13 @@ if __name__ == "__main__":
     print("Config json:", args.config)
     print("Number of epochs:", args.num_epochs)
     print("Resuming training from checkpoint:", args.resume_from_ckpt)
+    if args.save_ckpt_every_n:
+        print(f"saving checkpoints each {args.save_ckpt_every_n} epochs")
+    else:
+        args.save_ckpt_every_n = args.num_epochs - 1
+        print(f"saving only on last epoch")
+
+
 
     monai.utils.set_determinism(seed=args.seed)
     utils.download_weights_if_not_already(BUNDLE)
@@ -97,3 +104,14 @@ if __name__ == "__main__":
             total_loss += loss.item()
 
             progress_bar.set_postfix({"loss": total_loss / (step + 1)})
+
+        # Check if it's time to save the checkpoint
+        if e % args.save_ckpt_every_n == 0 and e > 0:
+            autoencoder_checkpoint_path = f"{args.name}_autoencoder_epoch_{e}.ckpt"
+            diffusion_checkpoint_path = f"{args.name}_diffusion_epoch_{e}.ckpt"
+            print("Saving checkpoint at epoch ", e)
+            print(f"autoencoder save path: {autoencoder_checkpoint_path}")
+            print(f"diffusion save path: {diffusion_checkpoint_path}")
+            # Save the checkpoint
+            torch.save(autoencoder.state_dict(), autoencoder_checkpoint_path)
+            torch.save(unet.state_dict(), diffusion_checkpoint_path)

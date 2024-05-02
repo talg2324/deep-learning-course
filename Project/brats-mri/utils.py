@@ -64,4 +64,8 @@ def create_arg_parser():
     # Argument for seed
     parser.add_argument('--seed', type=int, default=42,
                         help='random seed setting')
+
+    # Argument for periodic checkpoint saving
+    parser.add_argument('--save_ckpt_every_n', type=int, default=None,
+                        help='periodic ckpt saving')
     return parser
