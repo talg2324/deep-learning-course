@@ -1,16 +1,42 @@
+from typing import Optional
+
 import torch
 from generative.networks.nets import DiffusionModelUNet
 
 from utils import model_config
 
-def load_autoencoder(bundle_target):  
-    config = model_config(bundle_target, 'inference.json')
+
+def load_autoencoder(bundle_target,
+                     override_model_cfg_json: Optional[str] = None,
+                     override_weights_load_path: Optional[str] = None):
+    model_json = (
+        override_model_cfg_json
+        if override_model_cfg_json is not None
+        else 'inference.json'
+    )
+    config = model_config(bundle_target, model_json)
     autoencoder = config.get_parsed_content('autoencoder')
-    autoencoder.load_state_dict(torch.load(config.get_parsed_content('load_autoencoder_path')), strict=False)
+    weights_load_path = (
+        override_weights_load_path
+        if override_weights_load_path is not None
+        else config.get_parsed_content('load_autoencoder_path')
+    )
+
+    autoencoder.load_state_dict(torch.load(weights_load_path), strict=False)
     return autoencoder
 
-def load_unet(bundle_target, n_classes=6):
-    config = model_config(bundle_target, 'inference.json')
+
+def load_unet(bundle_target,
+              n_classes=6,
+              override_model_cfg_json: Optional[str] = None,
+              override_weights_load_path: Optional[str] = None
+              ):
+    model_json = (
+        override_model_cfg_json
+        if override_model_cfg_json is not None
+        else 'inference.json'
+    )
+    config = model_config(bundle_target, model_json)
     device = config.get_parsed_content('device')
     
     # Build U-Net manually with class conditioning
@@ -23,6 +49,10 @@ def load_unet(bundle_target, n_classes=6):
                               num_head_channels=net_params['num_head_channels'],
                               num_res_blocks=net_params['num_res_blocks'],
                               num_class_embeds=n_classes).to(device)
-    
-    unet.load_state_dict(torch.load(config.get_parsed_content('load_diffusion_path')), strict=False)
+    weights_load_path = (
+        override_weights_load_path
+        if override_weights_load_path is not None
+        else config.get_parsed_content('load_diffusion_path')
+    )
+    unet.load_state_dict(torch.load(weights_load_path), strict=False)
     return unet
