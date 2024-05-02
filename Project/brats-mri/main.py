@@ -45,6 +45,20 @@ def run_init():
     return args
 
 
+def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
+    autoencoder_ckpt_path = os.path.join(logdir, f"autoencoder_epoch_{epoch}.ckpt")
+    diffusion_ckpt_path = os.path.join(logdir, f"diffusion_epoch_{epoch}.ckpt")
+    losses_path = os.path.join(logdir, f"losses_dict_epoch_{epoch}")
+    print("Saving checkpoint at epoch ", epoch)
+    print(f"autoencoder save path: {autoencoder_ckpt_path}")
+    print(f"diffusion save path: {diffusion_ckpt_path}")
+    print(f"losses list save path: {losses_path}")
+    # Save the checkpoint
+    torch.save(autoencoder.state_dict(), autoencoder_ckpt_path)
+    torch.save(unet.state_dict(), diffusion_ckpt_path)
+    with (losses_path, 'wb') as f:
+        pickle.dump(losses_dict, f)
+
 
 if __name__ == "__main__":
     args = run_init()
@@ -88,13 +102,14 @@ if __name__ == "__main__":
     L = torch.nn.MSELoss().to(device)
 
     losses = {
-        'total': [],
-
+        'train': [],
+        'validation': []
     }
     for e in range(1, n_epochs+1):
         total_loss = 0
         progress_bar = tqdm(enumerate(train_loader), total=len(train_loader))
         progress_bar.set_description(f"Epoch {e}")
+        # training loop
         for step, batch in progress_bar:
             ims = batch['image'].to(device)
             labels = batch['class_label'].to(device)
@@ -123,18 +138,15 @@ if __name__ == "__main__":
 
             progress_bar.set_postfix({"loss": total_loss / (step + 1)})
 
-        losses['total'].append(total_loss)
+        # validation loop
+        # TODO - add validation loop
+
+        losses['train'].append(total_loss)
         # Check if it's time to save the checkpoint
         if e % args.save_ckpt_every_n == 0 and e > 0:
-            autoencoder_ckpt_path = os.path.join(logdir, f"{args.name}_autoencoder_epoch_{e}.ckpt")
-            diffusion_ckpt_path = os.path.join(logdir, f"{args.name}_diffusion_epoch_{e}.ckpt")
-            losses_path = os.path.join(logdir, f"{args.name}_losses_dict_epoch_{e}")
-            print("Saving checkpoint at epoch ", e)
-            print(f"autoencoder save path: {autoencoder_ckpt_path}")
-            print(f"diffusion save path: {diffusion_ckpt_path}")
-            print(f"losses list save path: {}")
-            # Save the checkpoint
-            torch.save(autoencoder.state_dict(), autoencoder_ckpt_path)
-            torch.save(unet.state_dict(), diffusion_ckpt_path)
-            with (losses_path, 'wb') as f:
-                pickle.dump(losses, f)
+            save_epoch(logdir=logdir,
+                       epoch=e,
+                       autoencoder=autoencoder,
+                       unet=unet,
+                       losses_dict=losses)
+
