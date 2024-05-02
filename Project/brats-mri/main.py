@@ -5,7 +5,8 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torch.cuda.amp import autocast
-
+import os
+import pickle
 
 from pretrained import load_autoencoder, load_unet
 import utils
@@ -22,25 +23,38 @@ n_epochs = 10
 lr = 1e-5
 batch_size = 2
 
-if __name__ == "__main__":
-    # argparser
+
+def run_init():
     arg_parser = utils.create_arg_parser()
     args = arg_parser.parse_args()
 
+    monai.utils.set_determinism(seed=args.seed)
+    utils.download_weights_if_not_already(BUNDLE)
+
     print("Started training Model:", args.name)
-    print("Config json:", args.config)
-    print("Number of epochs:", args.num_epochs)
-    print("Resuming training from checkpoint:", args.resume_from_ckpt)
+    print("Random seed: ", args.seed)
+    print("Config json: ", args.config)
+    print("Number of epochs: ", args.num_epochs)
+    print("Resuming training from checkpoint: ", args.resume_from_ckpt)
     if args.save_ckpt_every_n:
         print(f"saving checkpoints each {args.save_ckpt_every_n} epochs")
     else:
         args.save_ckpt_every_n = args.num_epochs - 1
         print(f"saving only on last epoch")
 
+    return args
 
 
-    monai.utils.set_determinism(seed=args.seed)
-    utils.download_weights_if_not_already(BUNDLE)
+
+if __name__ == "__main__":
+    args = run_init()
+
+    logdir = os.path.join(BUNDLE, 'models', args.name)
+    if not os.path.exists(logdir):
+        os.mkdir(logdir)
+
+    print(f"training logs dir: {logdir}")
+
     train_loader = DataLoader(CTSubset('../data/ct-rsna/train/', 'train_set_dropped_nans.csv',
                                         256, 0.5, 8), batch_size=batch_size)
 
@@ -73,6 +87,10 @@ if __name__ == "__main__":
     #  also the diffusion might have more complex loss components, we should be careful here
     L = torch.nn.MSELoss().to(device)
 
+    losses = {
+        'total': [],
+
+    }
     for e in range(1, n_epochs+1):
         total_loss = 0
         progress_bar = tqdm(enumerate(train_loader), total=len(train_loader))
@@ -105,13 +123,18 @@ if __name__ == "__main__":
 
             progress_bar.set_postfix({"loss": total_loss / (step + 1)})
 
+        losses['total'].append(total_loss)
         # Check if it's time to save the checkpoint
         if e % args.save_ckpt_every_n == 0 and e > 0:
-            autoencoder_checkpoint_path = f"{args.name}_autoencoder_epoch_{e}.ckpt"
-            diffusion_checkpoint_path = f"{args.name}_diffusion_epoch_{e}.ckpt"
+            autoencoder_ckpt_path = os.path.join(logdir, f"{args.name}_autoencoder_epoch_{e}.ckpt")
+            diffusion_ckpt_path = os.path.join(logdir, f"{args.name}_diffusion_epoch_{e}.ckpt")
+            losses_path = os.path.join(logdir, f"{args.name}_losses_dict_epoch_{e}")
             print("Saving checkpoint at epoch ", e)
-            print(f"autoencoder save path: {autoencoder_checkpoint_path}")
-            print(f"diffusion save path: {diffusion_checkpoint_path}")
+            print(f"autoencoder save path: {autoencoder_ckpt_path}")
+            print(f"diffusion save path: {diffusion_ckpt_path}")
+            print(f"losses list save path: {}")
             # Save the checkpoint
-            torch.save(autoencoder.state_dict(), autoencoder_checkpoint_path)
-            torch.save(unet.state_dict(), diffusion_checkpoint_path)
+            torch.save(autoencoder.state_dict(), autoencoder_ckpt_path)
+            torch.save(unet.state_dict(), diffusion_ckpt_path)
+            with (losses_path, 'wb') as f:
+                pickle.dump(losses, f)
