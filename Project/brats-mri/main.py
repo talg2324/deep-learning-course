@@ -91,6 +91,7 @@ if __name__ == "__main__":
     config = utils.model_config(BUNDLE, 'train_diffusion.json')
     scale_factor = compute_scale_factor(autoencoder, train_loader, device)
 
+    lr_scheduler = config.get_parsed_content('lr_scheduler')
     scheduler = config.get_parsed_content('noise_scheduler')
     latent_shape = config.get_parsed_content('latent_shape')
 
@@ -112,8 +113,8 @@ if __name__ == "__main__":
     }
 
     # TODO - do we need grad scaler?
-
     scaler = GradScaler()
+
     for e in range(1, args.num_epochs+1):
         autoencoder.train()
         unet.train()
@@ -144,11 +145,10 @@ if __name__ == "__main__":
                                      class_labels=labels)
 
                 loss = L(noise_pred.float(), noise.float())
-
-            # TODO - review this
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+                loss.backward()
+                optimizer.step()
+                lr_scheduler.step()
+                
             total_loss += loss.item()
 
             progress_bar.set_postfix({"loss": total_loss / (step + 1)})

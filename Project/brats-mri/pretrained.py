@@ -41,6 +41,7 @@ def load_unet(bundle_target,
     
     # Build U-Net manually with class conditioning
     net_params = config['network_def']  # Not all params are pre-evaluated
+    # TODO - notice that this unet does not use context conditioning, it uses class embedding.
     unet = DiffusionModelUNet(spatial_dims=config.get_parsed_content('spatial_dims'),
                               in_channels=config['latent_channels'],
                               out_channels=config['latent_channels'],
