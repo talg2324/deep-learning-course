@@ -114,7 +114,7 @@ if __name__ == "__main__":
     }
 
     # TODO - do we need grad scaler?
-    scaler = GradScaler()
+    # scaler = GradScaler()
 
     for e in range(1, args.num_epochs+1):
         autoencoder.train()
