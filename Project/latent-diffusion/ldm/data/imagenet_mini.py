@@ -70,5 +70,5 @@ class ImageNetMiniSubset(ImageNetMiniDataset):
         # self.labels = filter(lambda label: label in self.classes, self.labels)
         self.class_names = {label: self.class_names.get(label) for label in self.classes}
         self.labels = self.labels[valid_indices]
-        self.ids = self.ids[valid_indices]
+        self.ids = self.ids.iloc[valid_indices]
         # i for i, label in enumerate(self.labels) if label in self.classes]
