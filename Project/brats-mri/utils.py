@@ -49,6 +49,10 @@ def create_arg_parser():
     parser.add_argument('--num_epochs', type=int, default=10,
                         help='Number of epochs for training')
 
+    # Argument for setting epochs interval for validation
+    parser.add_argument('--val_every_n_epochs', type=int, default=1,
+                        help='epochs interval between validation loops, default is 1')
+
     # Argument for resuming training from a checkpoint
     parser.add_argument('--resume_from_ckpt', type=str, default=None,
                         help='Path to a checkpoint file to resume training from')
