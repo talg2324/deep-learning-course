@@ -19,7 +19,6 @@ from scripts.ct_rsna import CTSubset
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-n_epochs = 10
 lr = 1e-5
 batch_size = 2
 
@@ -51,9 +50,11 @@ def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
     diffusion_ckpt_path = os.path.join(logdir, f"diffusion_epoch_{epoch}.ckpt")
     losses_path = os.path.join(logdir, f"losses_dict_epoch_{epoch}")
     print("Saving checkpoint at epoch ", epoch)
-    print(f"autoencoder save path: {autoencoder_ckpt_path}")
-    print(f"diffusion save path: {diffusion_ckpt_path}")
-    print(f"losses list save path: {losses_path}")
+
+    # print(f"autoencoder save path: {autoencoder_ckpt_path}")
+    # print(f"diffusion save path: {diffusion_ckpt_path}")
+    # print(f"losses list save path: {losses_path}")
+
     # Save the checkpoint
     torch.save(autoencoder.state_dict(), autoencoder_ckpt_path)
     torch.save(unet.state_dict(), diffusion_ckpt_path)
@@ -109,7 +110,7 @@ if __name__ == "__main__":
         'train': [],
         'validation': []
     }
-    for e in range(1, n_epochs+1):
+    for e in range(1, args.num_epochs+1):
         autoencoder.train()
         unet.train()
 
