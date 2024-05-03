@@ -34,6 +34,9 @@ def download_weights_if_not_already(bundle_target):
         if not os.path.exists(PRETRAINED_MODEL_NAME):
             monai.bundle.load(name=PRETRAINED_MODEL_NAME, bundle_dir="")
 
+        if not os.path.exists(os.path.join(bundle_target, 'models')):
+            os.mkdir(os.path.join(bundle_target, 'models'))
+
         copy_weights_file(autoencoder_weights, PRETRAINED_MODEL_NAME, bundle_target)
         copy_weights_file(unet_weights, PRETRAINED_MODEL_NAME, bundle_target)
 
