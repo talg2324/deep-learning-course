@@ -161,7 +161,7 @@ def sample(unet, autoencoder, inferer, scheduler, noise_shape, im_log_path, n_cl
 if __name__ == "__main__":
     args = run_init()
 
-    logdir = os.path.join(BUNDLE, 'models', args.name)
+    logdir = os.path.join('../data/', 'outputs', args.name)
     im_log = os.path.join(logdir, 'image_logs')
     if not os.path.exists(logdir):
         os.mkdir(logdir)
