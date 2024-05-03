@@ -49,6 +49,9 @@ class CTDataset(Dataset):
         abs_path = os.path.join(self.data_dir, f'{id}.npy')
         im = np.load(abs_path).astype(np.float32)
 
+        if im.shape[0] > 512:
+            im = im[-512:, :]
+
         if self.transform:
             im = self.transform(im)
 
