@@ -4,7 +4,7 @@ import monai
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torch.optim import Adam
-from torch.cuda.amp import autocast
+from torch.cuda.amp import autocast, GradScaler
 import os
 import pickle
 
@@ -110,6 +110,10 @@ if __name__ == "__main__":
         'train': [],
         'validation': []
     }
+
+    # TODO - do we need grad scaler?
+
+    scaler = GradScaler()
     for e in range(1, args.num_epochs+1):
         autoencoder.train()
         unet.train()
@@ -140,8 +144,11 @@ if __name__ == "__main__":
                                      class_labels=labels)
 
                 loss = L(noise_pred.float(), noise.float())
-                loss.backward()
-                optimizer.step()
+
+            # TODO - review this
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
             total_loss += loss.item()
 
             progress_bar.set_postfix({"loss": total_loss / (step + 1)})
