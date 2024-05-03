@@ -15,6 +15,8 @@ def load_autoencoder(bundle_target,
         else 'inference.json'
     )
     config = model_config(bundle_target, model_json)
+    device = config.get_parsed_content('device')
+
     autoencoder = config.get_parsed_content('autoencoder')
     weights_load_path = (
         override_weights_load_path
@@ -22,15 +24,14 @@ def load_autoencoder(bundle_target,
         else config.get_parsed_content('load_autoencoder_path')
     )
 
-    autoencoder.load_state_dict(torch.load(weights_load_path), strict=False)
+    autoencoder.load_state_dict(torch.load(weights_load_path, map_location=device), strict=False)
     return autoencoder
 
 
 def load_unet(bundle_target,
               n_classes=6,
               override_model_cfg_json: Optional[str] = None,
-              override_weights_load_path: Optional[str] = None
-              ):
+              override_weights_load_path: Optional[str] = None):
     model_json = (
         override_model_cfg_json
         if override_model_cfg_json is not None
@@ -55,5 +56,5 @@ def load_unet(bundle_target,
         if override_weights_load_path is not None
         else config.get_parsed_content('load_diffusion_path')
     )
-    unet.load_state_dict(torch.load(weights_load_path), strict=False)
+    unet.load_state_dict(torch.load(weights_load_path, map_location=device), strict=False)
     return unet
