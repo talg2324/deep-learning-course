@@ -57,7 +57,7 @@ def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
     # Save the checkpoint
     torch.save(autoencoder.state_dict(), autoencoder_ckpt_path)
     torch.save(unet.state_dict(), diffusion_ckpt_path)
-    with (losses_path, 'wb') as f:
+    with open(losses_path, 'wb') as f:
         pickle.dump(losses_dict, f)
 
 
@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
         total_loss = 0
         progress_bar = tqdm(enumerate(train_loader), total=len(train_loader))
-        progress_bar.set_description(f"Epoch {e}")
+        progress_bar.set_description(f"Epoch {e} - train")
         # training loop
         for step, batch in progress_bar:
             ims = batch['image'].to(device)
@@ -158,7 +158,7 @@ if __name__ == "__main__":
             val_loss = 0
             with torch.no_grad():
                 val_progress_bar = tqdm(enumerate(val_loader), total=len(val_loader))
-                val_progress_bar.set_description(f"Epoch {e} - validation loop")
+                val_progress_bar.set_description(f"Epoch {e} - validation")
                 for val_step, batch in val_progress_bar:
                     ims = batch['image'].to(device)
                     labels = batch['class_label'].to(device)
@@ -183,7 +183,7 @@ if __name__ == "__main__":
                         loss = L(noise_pred.float(), noise.float())
 
                     val_loss += loss.item()
-                    progress_bar.set_postfix({"val loss": val_loss / (val_step + 1)})
+                    val_progress_bar.set_postfix({"val loss": val_loss / (val_step + 1)})
 
             # normalize loss by number of batches
             val_loss /= val_step
