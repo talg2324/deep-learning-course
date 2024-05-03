@@ -72,4 +72,10 @@ def create_arg_parser():
     # Argument for periodic checkpoint saving
     parser.add_argument('--save_ckpt_every_n', type=int, default=None,
                         help='periodic ckpt saving')
+    
+    parser.add_argument('--conditioning', type=str, choices=['class', 'context'],
+                        required=True, help='context or class conditioning with the class label')
+    
+    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--batch_size', type=int, default=16)
     return parser
