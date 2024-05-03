@@ -45,7 +45,7 @@ class ImageNetMiniDataset(Dataset):
         id, label = self.ids.iloc[n], self.labels[n]
         abs_path = os.path.join(self.data_dir, f'{id}.npy')
         im = np.load(abs_path).astype(np.float32)
-        im = np.transpose(im, (1, 2, 0))
+        
         if self.transform:
             im = self.transform(im)
         im = im.permute(1, 2, 0)
