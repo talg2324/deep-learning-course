@@ -45,7 +45,6 @@ def run_init():
 
     return args
 
-
 def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
     autoencoder_ckpt_path = os.path.join(logdir, f"autoencoder_epoch_{epoch}.ckpt")
     diffusion_ckpt_path = os.path.join(logdir, f"diffusion_epoch_{epoch}.ckpt")
