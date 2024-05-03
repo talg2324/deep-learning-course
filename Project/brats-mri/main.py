@@ -4,6 +4,7 @@ import monai
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torch.optim import Adam
+from torch.optim.lr_scheduler import MultiStepLR
 from torch.cuda.amp import autocast, GradScaler
 import os
 import pickle
@@ -91,7 +92,6 @@ if __name__ == "__main__":
     config = utils.model_config(BUNDLE, 'train_diffusion.json')
     scale_factor = compute_scale_factor(autoencoder, train_loader, device)
 
-    lr_scheduler = config.get_parsed_content('lr_scheduler')
     scheduler = config.get_parsed_content('noise_scheduler')
     latent_shape = config.get_parsed_content('latent_shape')
 
@@ -102,6 +102,7 @@ if __name__ == "__main__":
                                                           autoencoder_latent_shape=None)
 
     optimizer = Adam(list(unet.parameters()) + list(autoencoder.parameters()), lr=lr)
+    lr_scheduler = MultiStepLR(optimizer, milestones=[1000], gamma=0.1)
 
     # TODO - the autoencoder does not train with MSE,
     #  also the diffusion might have more complex loss components, we should be careful here
@@ -148,7 +149,7 @@ if __name__ == "__main__":
                 loss.backward()
                 optimizer.step()
                 lr_scheduler.step()
-                
+
             total_loss += loss.item()
 
             progress_bar.set_postfix({"loss": total_loss / (step + 1)})
