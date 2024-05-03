@@ -35,8 +35,8 @@ class ImageNetMiniDataset(Dataset):
         prob = 100 * counts / counts.sum()
 
         print(f'Data source: {file_name}')
-        for c in self.class_names.keys():
-            print(f'    Class {self.class_names[c]}: {prob[c]:.1f}%')
+        for i, c in enumerate(self.class_names.keys()):
+            print(f'    Class {self.class_names[c]}: {prob[i]:.1f}%')
 
     def __len__(self):
         return self.labels.shape[0]
