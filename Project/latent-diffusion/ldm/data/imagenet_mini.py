@@ -48,7 +48,7 @@ class ImageNetMiniDataset(Dataset):
         im = np.transpose(im, (1, 2, 0))
         if self.transform:
             im = self.transform(im)
-
+        im = im.permute(1, 2, 0)
         human_label = self.class_names[int(label)]
 
         return {'image': im, 'class_label': label, 'human_label': human_label}
