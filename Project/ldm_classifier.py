@@ -299,6 +299,7 @@ class LdmClassifier:
         mean_pred_errors = pred_errors.view(self.n_train_timesteps // t_sampling_stride,
                                             n_trials,
                                             *pred_errors.shape[1:]).mean(dim=(0, 1))
+        
         l2_mean_err = mean_pred_errors[0]
         l1_mean_err = mean_pred_errors[1]
         return l2_mean_err, l1_mean_err
