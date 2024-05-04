@@ -30,12 +30,11 @@ class ImageNetMiniDataset(Dataset):
         self.labels = labels['class_label'].to_numpy()
 
     def class_distribution(self, file_name, labels):
-        nbins = len(self.class_names)
-        counts, _ = np.histogram(labels, bins=nbins)
+        unique, counts = np.unique(labels, return_counts=True)
         prob = 100 * counts / counts.sum()
 
         print(f'Data source: {file_name}')
-        for i, c in enumerate(self.class_names.keys()):
+        for i, c in enumerate(unique):
             print(f'    Class {self.class_names[c]}: {prob[i]:.1f}%')
 
     def __len__(self):
