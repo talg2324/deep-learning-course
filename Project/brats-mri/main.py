@@ -61,7 +61,7 @@ def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
 
 def train_loop(unet, autoencoder, inferer, dl, L, optimizer, use_context, noise_shape):
     unet.train()
-    autoencoder.train()
+    # autoencoder.train()
     total_loss = 0
     with tqdm(dl, desc='  Training loop', total=len(dl)) as pbar:
         for batch in pbar:
@@ -208,7 +208,8 @@ if __name__ == "__main__":
                      override_model_cfg_json=args.config,
                      override_weights_load_path=args.resume_from_ckpt)
 
-    optimizer = Adam(list(unet.parameters()) + list(autoencoder.parameters()), lr=args.lr)
+    optimizer = Adam(list(unet.parameters()), lr=args.lr)
+    # optimizer = Adam(list(unet.parameters()) + list(autoencoder.parameters()), lr=args.lr)
     lr_scheduler = MultiStepLR(optimizer, milestones=[1000], gamma=0.1)
 
     # TODO - the autoencoder does not train with MSE,
