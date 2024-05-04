@@ -403,19 +403,3 @@ class MonaiLdmClassifier(DiffusionClassifierInterface):
         z_mu, z_sigma = self._autoencoder.encode(batch['image'])
         return z_mu
 
-    def classify_batch(self,
-                       x0,
-                       c_hypotheses,
-                       n_trials: int = 1,
-                       t_sampling_stride: int = 5):
-        """
-        classify a single batch
-        :param x0: diffusion input
-        :param c_hypotheses: conditioning hypothesis input
-        :param n_trials: number of trials to do for each sample. TODO - need to revisit how this is different than the batch...
-        :param t_sampling_stride: sampling rate of the diffusion time steps
-
-        :returns : torch.Tensor(L2 predicted label), torch.Tensor(L1 predicted label)
-        """
-        x0 = self.get_latent_batch(x0)
-        return super(MonaiLdmClassifier, self).classify_batch(x0, c_hypotheses, n_trials, t_sampling_stride)
