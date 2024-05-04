@@ -63,7 +63,7 @@ class LdmClassifier:
         """
         c, h, w = self.input_dims
         self._noise = torch.randn(self.n_noise_samples, c, h, w,
-                                  generator=torch.Generator().manual_seed(self._random_seed))
+                                  generator=torch.Generator().manual_seed(self._random_seed)).to(self.model.device)
 
     @property
     def noise(self):
