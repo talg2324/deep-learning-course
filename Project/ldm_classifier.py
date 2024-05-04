@@ -69,7 +69,7 @@ class DiffusionClassifierInterface:
     def get_conditioning(self, cond_input):
         raise NotImplementedError
 
-    def get_diffusion_noise_prediction(self, x0, t, conditioning):
+    def get_noise_prediction(self, x0, t, noise, c):
         raise NotImplementedError
 
     def get_class_hypotheses_for_batch(self, batch_size: int, classes: List[int]):
@@ -154,8 +154,7 @@ class DiffusionClassifierInterface:
                                         x0,
                                         c,
                                         n_trials: int = 1,
-                                        t_sampling_stride: int = 5,
-                                        output_dtype: str = 'float32'):
+                                        t_sampling_stride: int = 5):
         """
         runs the core algorithm of the classifier.
         calculates noise prediction errors given the conditioning c.
@@ -166,7 +165,6 @@ class DiffusionClassifierInterface:
         :param c: conditioning
         :param n_trials: number of trials to do for each sample. TODO - need to revisit how this is different than the batch...
         :param t_sampling_stride: sampling rate of the diffusion time steps
-        :param output_dtype: optional - change dtype to float16 to be more memory efficient
         """
         ts = []
         batch_size = x0.shape[0]
@@ -179,34 +177,32 @@ class DiffusionClassifierInterface:
             for _ in tqdm.auto.trange(len(ts) // batch_size + int(len(ts) % batch_size != 0),
                                       desc="diffusion sampling"):
                 with autocast(enabled=True):
-                    batch_ts = torch.tensor(ts[idx: idx + batch_size]).to(self.device)
+                    t_input = torch.tensor(ts[idx: idx + batch_size]).to(self.device)
 
-                    noise = self.noise[:len(batch_ts)]
+                    noise = self.noise[:len(t_input)]
 
-                    latent_ = x0.repeat(len(batch_ts), 1, 1, 1)
+                    latent_ = x0.repeat(len(t_input), 1, 1, 1)
 
-                    # noised_latent = self._model.q_sample(latent_, batch_ts, noise)
-                    noised_latent = self.get_noised_input(latent_, batch_ts, noise)
-
-                    t_input = batch_ts.to(self.device).half() if output_dtype == 'float16' else batch_ts.to(
-                        self.device)
-
-                    # prepare conditioning input
-                    cond_input = self.trim_cond_dict(c, len(batch_ts))
-
-                    # get condition embedding
-                    cond_emb = self.get_conditioning(cond_input)
-
-                    # get noise prediction from diffusion model
-                    noise_pred = self.get_diffusion_noise_prediction(noised_latent, t_input, cond_emb)
+                    noise_pred = self.get_noise_prediction(latent_, t_input, noise, c)
+                    # noised_latent = self.get_noised_input(latent_, t_input, noise)
+                    #
+                    #
+                    # # prepare conditioning input
+                    # cond_input = self.trim_cond_dict(c, len(t_input))
+                    #
+                    # # get condition embedding
+                    # cond_emb = self.get_conditioning(cond_input)
+                    #
+                    # # get noise prediction from diffusion model
+                    # noise_pred = self.get_diffusion_noise_prediction(noised_latent, t_input, cond_emb)
 
                     l2_loss = mean_flat((noise - noise_pred) ** 2)
                     l1_loss = mean_flat(torch.abs(noise - noise_pred))
                     error = torch.cat([l2_loss.unsqueeze(1),
                                        l1_loss.unsqueeze(1)], dim=1)
 
-                    pred_errors[idx: idx + len(batch_ts)] = error.detach().cpu()
-                    idx += len(batch_ts)
+                    pred_errors[idx: idx + len(t_input)] = error.detach().cpu()
+                    idx += len(t_input)
         mean_pred_errors = pred_errors.view(self.n_train_timesteps // t_sampling_stride,
                                             n_trials,
                                             *pred_errors.shape[1:]).mean(dim=(0, 1))
@@ -325,21 +321,33 @@ class LdmClassifier(DiffusionClassifierInterface):
         noise_pred = self._model.model(x0, t, **conditioning)
         return noise_pred
 
+    def get_noise_prediction(self, x0, t, noise, c):
+        noised_latent = self.get_noised_input(x0, t, noise)
+
+        # prepare conditioning input
+        cond_input = self.trim_cond_dict(c, len(t))
+
+        # get condition embedding
+        cond_emb = self.get_conditioning(cond_input)
+
+        # get noise prediction from diffusion model
+        noise_pred = self.get_diffusion_noise_prediction(noised_latent, t, cond_emb)
+        return noise_pred
+
 
 class MonaiLdmClassifier(DiffusionClassifierInterface):
     def __init__(self,
-                 autoencoder:  AutoencoderKL,
+                 autoencoder: AutoencoderKL,
                  unet: DiffusionModelUNet,
-                 scheduler,
+                 inferer,
                  n_noise_samples: int = 1024,
                  random_seed: int = 42,
-                 input_dims: Tuple[int, int, int] = (1, 256, 256)
+                 input_dims: Tuple[int, int, int] = (1, 256, 256),
                  ):
         self._input_dims = input_dims
-        self._autoencoder = autoencoder
+        self._inferer = inferer
         self._unet = unet
-
-        self._scheduler = scheduler
+        self._autoencoder = autoencoder
         super().__init__(device=unet.device, n_noise_samples=n_noise_samples, random_seed=random_seed)
 
     @property
@@ -347,8 +355,12 @@ class MonaiLdmClassifier(DiffusionClassifierInterface):
         return self._unet
 
     @property
-    def scheduler(self):
-        return self._scheduler
+    def autoencoder(self):
+        return self._autoencoder
+
+    @property
+    def inferer(self):
+        return self._inferer
 
     @property
     def input_dims(self):
@@ -356,17 +368,26 @@ class MonaiLdmClassifier(DiffusionClassifierInterface):
 
     @property
     def n_train_timesteps(self):
-        return self._scheduler.scheduler.num_train_timesteps
+        return self.inferer.scheduler.num_train_timesteps
 
     def get_noised_input(self, x0, t, noise):
-        return self.scheduler.add_noise(x0, noise, t)
+        return self.inferer.scheduler.add_noise(x0, noise, t)
 
     #  TODO - figure out what to do here
     def get_conditioning(self, cond_input):
         pass
 
+    # TODO - consider deleting this function as the true obligatory is only the below
     def get_diffusion_noise_prediction(self, x0, t, conditioning):
-        return self.unet(x0, t, conditioning)
+        pass
+
+    def get_noise_prediction(self, x0, t, noise, c):
+        return self.inferer(inputs=x0,
+                            autoencoder_model=self.autoencoder,
+                            diffusion_model=self.unet,
+                            noise=noise,
+                            timesteps=t,
+                            condition=c.view(-1, 1, 1).to(dtype=torch.float32))
 
     def get_latent_batch(self, batch):
         """
