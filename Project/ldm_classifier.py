@@ -171,8 +171,8 @@ class LdmClassifier:
                                                                             c=c_hypo,
                                                                             n_trials=n_trials,
                                                                             t_sampling_stride=t_sampling_stride)
-            l2_c_errs.append((l2_mean_err, c_hypo['class_label']))
-            l1_c_errs.append((l1_mean_err, c_hypo['class_label']))
+            l2_c_errs.append((l2_mean_err, c_hypo['class_label'].detach().cpu()))
+            l1_c_errs.append((l1_mean_err, c_hypo['class_label'].detach().cpu()))
 
         l2_label_pred = self.extract_prediction_from_errs(l2_c_errs)
         l1_label_pred = self.extract_prediction_from_errs(l1_c_errs)
