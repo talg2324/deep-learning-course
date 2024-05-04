@@ -10,6 +10,7 @@ sys.path.append('latent-diffusion/ldm/data/')
 
 from ldm.models.diffusion.ddpm import LatentDiffusion
 from torch.utils.data import Dataset
+from torch.cuda.amp import autocast
 
 
 def mean_flat(tensor):
@@ -222,84 +223,85 @@ class LdmClassifier:
             idx = 0
             for _ in tqdm.auto.trange(len(ts) // batch_size + int(len(ts) % batch_size != 0),
                                       desc="diffusion sampling"):
-                batch_ts = torch.tensor(ts[idx: idx + batch_size]).to(self._model.device)
-
-                noise = self.noise[:len(batch_ts)]
-
-                latent_ = x0.repeat(len(batch_ts), 1, 1, 1)
-
-                noised_latent = self._model.q_sample(latent_, batch_ts, noise)
-
-                t_input = batch_ts.to(self._model.device).half() if output_dtype == 'float16' else batch_ts.to(
-                    self._model.device)
-                cond_input = self.trim_cond_dict(c, len(batch_ts))
-
-                # get condition embedding
-                cond_emb = self._model.get_learned_conditioning(cond_input)
-
-                # prepare condition embedding dict in correct form for diffusion_model.forward
-                key = 'c_concat' if self._model.model.conditioning_key == 'concat' else 'c_crossattn'
-                cond_emb = {key: [cond_emb]}
-
-                model_output = self._model.model(noised_latent, t_input, **cond_emb)
-
-                # B, C = noised_latent.shape[:2]
-
-                ### NOTICE - here I made a change that I do not understand. we must understand if our model outputs a different output than DiT_XL_2 that was originally used. ###
-                ###  on one side, it seems that our model is supposed to return x_recon, and not noise prediction. but looking at the results, I am getting the impression it is indeed noise pred...
-
-                # noise_pred, model_var_values = torch.split(model_output, C, dim=1)
-                noise_pred = model_output
-
-                ###################### VB - non functional - commented out ATM ###############
-
-                # # compute MSE
-                # mse = mean_flat((noise - noise_pred) ** 2)
-                # l1_loss = mean_flat(torch.abs(noise - noise_pred))
-
-                # # VB
-                # true_mean, _, true_log_variance_clipped = model.q_posterior(x_start=latent_, x_t=noised_latent, t=t_input)
-
-                # (
-                #     model_mean,
-                #     posterior_variance,
-                #     posterior_log_variance,
-                #     model_out
-                # ) = diffusion.p_mean_variance(
-                #     x=noised_latent,
-                #     c=cond_emb,
-                #     t=t_input,
-                #     clip_denoised=False,
-                #     return_model_output=True
-                #     )
-
-                # kl = normal_kl(
-                #     true_mean, true_log_variance_clipped, model_mean, posterior_log_variance
-                # )
-                # kl = mean_flat(kl) / np.log(2.0)
-
-                # # NLL
-                # decoder_nll = -discretized_gaussian_log_likelihood(
-                #     latent_, means=model_mean, log_scales=0.5 * posterior_log_variance
-                # )
-                # decoder_nll = mean_flat(decoder_nll) / np.log(2.0)
-
-                # error = torch.cat([mse.unsqueeze(1),
-                #                     l1_loss.unsqueeze(1),
-                #                     kl.unsqueeze(1),
-                #                     decoder_nll.unsqueeze(1)], dim=1)
-
-                l2_loss = mean_flat((noise - noise_pred) ** 2)
-                l1_loss = mean_flat(torch.abs(noise - noise_pred))
-                error = torch.cat([l2_loss.unsqueeze(1),
-                                   l1_loss.unsqueeze(1)], dim=1)
-
-                pred_errors[idx: idx + len(batch_ts)] = error.detach().cpu()
-                idx += len(batch_ts)
+                with autocast(enabled=True):
+                    batch_ts = torch.tensor(ts[idx: idx + batch_size]).to(self._model.device)
+    
+                    noise = self.noise[:len(batch_ts)]
+    
+                    latent_ = x0.repeat(len(batch_ts), 1, 1, 1)
+    
+                    noised_latent = self._model.q_sample(latent_, batch_ts, noise)
+    
+                    t_input = batch_ts.to(self._model.device).half() if output_dtype == 'float16' else batch_ts.to(
+                        self._model.device)
+                    cond_input = self.trim_cond_dict(c, len(batch_ts))
+    
+                    # get condition embedding
+                    cond_emb = self._model.get_learned_conditioning(cond_input)
+    
+                    # prepare condition embedding dict in correct form for diffusion_model.forward
+                    key = 'c_concat' if self._model.model.conditioning_key == 'concat' else 'c_crossattn'
+                    cond_emb = {key: [cond_emb]}
+    
+                    model_output = self._model.model(noised_latent, t_input, **cond_emb)
+    
+                    # B, C = noised_latent.shape[:2]
+    
+                    ### NOTICE - here I made a change that I do not understand. we must understand if our model outputs a different output than DiT_XL_2 that was originally used. ###
+                    ###  on one side, it seems that our model is supposed to return x_recon, and not noise prediction. but looking at the results, I am getting the impression it is indeed noise pred...
+    
+                    # noise_pred, model_var_values = torch.split(model_output, C, dim=1)
+                    noise_pred = model_output
+    
+                    ###################### VB - non functional - commented out ATM ###############
+    
+                    # # compute MSE
+                    # mse = mean_flat((noise - noise_pred) ** 2)
+                    # l1_loss = mean_flat(torch.abs(noise - noise_pred))
+    
+                    # # VB
+                    # true_mean, _, true_log_variance_clipped = model.q_posterior(x_start=latent_, x_t=noised_latent, t=t_input)
+    
+                    # (
+                    #     model_mean,
+                    #     posterior_variance,
+                    #     posterior_log_variance,
+                    #     model_out
+                    # ) = diffusion.p_mean_variance(
+                    #     x=noised_latent,
+                    #     c=cond_emb,
+                    #     t=t_input,
+                    #     clip_denoised=False,
+                    #     return_model_output=True
+                    #     )
+    
+                    # kl = normal_kl(
+                    #     true_mean, true_log_variance_clipped, model_mean, posterior_log_variance
+                    # )
+                    # kl = mean_flat(kl) / np.log(2.0)
+    
+                    # # NLL
+                    # decoder_nll = -discretized_gaussian_log_likelihood(
+                    #     latent_, means=model_mean, log_scales=0.5 * posterior_log_variance
+                    # )
+                    # decoder_nll = mean_flat(decoder_nll) / np.log(2.0)
+    
+                    # error = torch.cat([mse.unsqueeze(1),
+                    #                     l1_loss.unsqueeze(1),
+                    #                     kl.unsqueeze(1),
+                    #                     decoder_nll.unsqueeze(1)], dim=1)
+    
+                    l2_loss = mean_flat((noise - noise_pred) ** 2)
+                    l1_loss = mean_flat(torch.abs(noise - noise_pred))
+                    error = torch.cat([l2_loss.unsqueeze(1),
+                                       l1_loss.unsqueeze(1)], dim=1)
+    
+                    pred_errors[idx: idx + len(batch_ts)] = error.detach().cpu()
+                    idx += len(batch_ts)
         mean_pred_errors = pred_errors.view(self.n_train_timesteps // t_sampling_stride,
                                             n_trials,
                                             *pred_errors.shape[1:]).mean(dim=(0, 1))
-        
+    
         l2_mean_err = mean_pred_errors[0]
         l1_mean_err = mean_pred_errors[1]
         return l2_mean_err, l1_mean_err
