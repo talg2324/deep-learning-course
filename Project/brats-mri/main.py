@@ -92,7 +92,9 @@ def train_loop(unet, autoencoder, inferer, dl, L, optimizer, use_context, noise_
                 optimizer.step()
                 total_loss += loss.item()
                 pbar.set_postfix({"loss": loss.item()})
-    return total_loss / len(dl)
+        avg_loss = total_loss / len(dl)
+        pbar.set_postfix({"loss": avg_loss})
+    return avg_loss
 
 
 def val_loop(unet, autoencoder, inferer, dl, L, use_context, noise_shape):
@@ -124,7 +126,9 @@ def val_loop(unet, autoencoder, inferer, dl, L, use_context, noise_shape):
                 loss = L(noise_pred.float(), noise.float())
                 total_loss += loss.item()
                 pbar.set_postfix({"loss": loss.item()})
-    return total_loss / len(dl)
+        avg_loss = total_loss / len(dl)
+        pbar.set_postfix({"loss": avg_loss})
+    return avg_loss
 
 
 def sample(unet, autoencoder, inferer, scheduler, noise_shape, im_log_path, n_classes=6):
@@ -174,11 +178,11 @@ if __name__ == "__main__":
     print(f"Training dir: {logdir}")
 
     train_loader = DataLoader(CTSubset('../data/ct-rsna/train/', 'train_set_dropped_nans.csv',
-                                        size=256, flip_prob=0.5, subset_len=1024),
+                                        size=256, flip_prob=0.5, subset_len=2048),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     val_loader = DataLoader(CTSubset('../data/ct-rsna/validation/', 'validation_set_dropped_nans.csv',
-                                        size=256, flip_prob=0., subset_len=1024),
+                                        size=256, flip_prob=0., subset_len=2048),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     # Initialize models
