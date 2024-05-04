@@ -181,9 +181,9 @@ class DiffusionClassifierInterface:
 
                     noise = self.noise[:len(t_input)]
 
-                    latent_ = x0.repeat(len(t_input), 1, 1, 1)
+                    x0 = x0.repeat(len(t_input), 1, 1, 1)
 
-                    noise_pred = self.get_noise_prediction(latent_, t_input, noise, c)
+                    noise_pred = self.get_noise_prediction(x0, t_input, noise, c)
                     # noised_latent = self.get_noised_input(latent_, t_input, noise)
                     #
                     #
