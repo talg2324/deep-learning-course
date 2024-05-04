@@ -73,8 +73,7 @@ class LdmClassifier:
     def n_train_timesteps(self):
         return self._model.num_timesteps
 
-    @staticmethod
-    def get_class_hypotheses_for_batch(batch_size: int, classes: List[int]):
+    def get_class_hypotheses_for_batch(self, batch_size: int, classes: List[int]):
         """
         creates a list of mock labels (for each valid class hypothesis).
         this mock conditioning will be inserted to the diffusion model as class conditioning
@@ -82,7 +81,7 @@ class LdmClassifier:
         :param batch_size: number of input samples in batch
         :param classes: list of class hypotheses.
         """
-        c_hypotheses = [{'class_label': torch.tensor([c] * batch_size)} for c in classes]
+        c_hypotheses = [{'class_label': torch.tensor([c] * batch_size,  device=self.model.device)} for c in classes]
         return c_hypotheses
 
     def get_latent_batch(self, batch, classes: List[int]):
