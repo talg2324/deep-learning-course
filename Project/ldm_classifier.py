@@ -1,6 +1,9 @@
+from typing import List
+
 import torch
 import sys
 import tqdm
+import numpy as np
 
 sys.path.append('latent-diffusion')
 sys.path.append('latent-diffusion/ldm/data/')
@@ -71,18 +74,18 @@ class LdmClassifier:
         return self._model.num_timesteps
 
     @staticmethod
-    def get_class_hypotheses_for_batch(batch_size: int, n_classes: int = 6):
+    def get_class_hypotheses_for_batch(batch_size: int, classes: List[int]):
         """
         creates a list of mock labels (for each valid class hypothesis).
         this mock conditioning will be inserted to the diffusion model as class conditioning
 
         :param batch_size: number of input samples in batch
-        :param n_classes: number of class hypotheses.
+        :param classes: list of class hypotheses.
         """
-        c_hypotheses = [{'class_label': torch.tensor([c] * batch_size)} for c in range(n_classes)]
+        c_hypotheses = [{'class_label': torch.tensor([c] * batch_size)} for c in classes]
         return c_hypotheses
 
-    def get_latent_batch(self, batch, n_classes: int = 6):
+    def get_latent_batch(self, batch, classes: List[int]):
         """
         prepares input for the latent diffusion model.
 
@@ -92,10 +95,10 @@ class LdmClassifier:
                                             'class_label': List[torch.Tensor],
                                             'human_label': List[str]
                                          }
-        :param n_classes: number of class hypotheses to override to true class
+        :param classes: List[int]: class hypotheses to override to true class
         """
         x0, c_true = self._model.get_input(batch, self._model.first_stage_key)
-        c_hypotheses = self.get_class_hypotheses_for_batch(batch_size=x0.shape[0], n_classes=n_classes)
+        c_hypotheses = self.get_class_hypotheses_for_batch(batch_size=x0.shape[0], classes=classes)
         return x0, c_hypotheses
 
     @staticmethod
@@ -114,7 +117,8 @@ class LdmClassifier:
                          dataset: Dataset,
                          batch_size: int = 1,
                          n_trials: int = 1,
-                         t_sampling_stride: int = 5):
+                         t_sampling_stride: int = 5,
+                         classes: List[int]=None):
         """
         perform classification for a given dataset using the latent diffusion model as classifier
 
@@ -124,11 +128,13 @@ class LdmClassifier:
                             the batch seems to refer to temporal dimension of the diffusion
         :param n_trials: number of trials to do for each sample. TODO - need to revisit how this is different than the batch...
         :param t_sampling_stride: sampling rate of the diffusion time steps
+        :param classes: classes hypotheses to use for classification. if None is passed, all dataset labels are used
 
         :returns : List[L2 loss predictions], List[L1 loss predictions], List[gt]
         """
         # TODO - add here verifications to the Dataset object to make sure it has the required attributes
-        n_classes = len(dataset.labels)
+        if classes is None:
+            classes = np.unique(dataset.labels).tolist
 
         assert batch_size == 1, "classifier batch size refers to a batch in the t_timesteps dimension. but it can only work on one sample at each call. dataloader batch must be set to 1"
         loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
@@ -136,7 +142,7 @@ class LdmClassifier:
         l1_labels_pred = []
         true_labels = []
         for batch in tqdm.auto.tqdm(loader, desc="dataset samples"):
-            x0, c_hypotheses = self.get_latent_batch(batch, n_classes)
+            x0, c_hypotheses = self.get_latent_batch(batch, classes)
             l2_label_pred, l1_label_pred = self.classify_batch(x0, c_hypotheses, n_trials, t_sampling_stride)
 
             true_labels.extend(batch['class_label'])
