@@ -10,7 +10,7 @@ from generative.inferers import LatentDiffusionInferer
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torch.optim.lr_scheduler import MultiStepLR
-from torch.cuda.amp import autocast
+from torch.cuda.amp import autocast, GradScaler
 
 from pretrained import load_autoencoder, load_unet
 import utils
@@ -59,7 +59,7 @@ def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
         pickle.dump(losses_dict, f)
 
 
-def train_loop(unet, autoencoder, inferer, dl, L, optimizer, use_context, noise_shape):
+def train_loop(unet, autoencoder, inferer, dl, L, optimizer, scaler, use_context, noise_shape):
     unet.train()
     # autoencoder.train()
     total_loss = 0
@@ -88,8 +88,9 @@ def train_loop(unet, autoencoder, inferer, dl, L, optimizer, use_context, noise_
                                         timesteps=timesteps,
                                         class_labels=labels)
                 loss = L(noise_pred.float(), noise.float())
-                loss.backward()
-                optimizer.step()
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
                 total_loss += loss.item()
                 pbar.set_postfix({"loss": loss.item()})
         avg_loss = total_loss / len(dl)
@@ -211,6 +212,7 @@ if __name__ == "__main__":
     optimizer = Adam(list(unet.parameters()), lr=args.lr)
     # optimizer = Adam(list(unet.parameters()) + list(autoencoder.parameters()), lr=args.lr)
     lr_scheduler = MultiStepLR(optimizer, milestones=[1000], gamma=0.1)
+    scaler = GradScaler()
 
     # TODO - the autoencoder does not train with MSE,
     #  also the diffusion might have more complex loss components, we should be careful here
@@ -227,7 +229,7 @@ if __name__ == "__main__":
         print(f'Epoch #[{e}/{args.num_epochs}]:')
 
         train_loss = train_loop(unet, autoencoder, inferer, train_loader,
-                                L, optimizer, use_context, train_noise_shape)
+                                L, optimizer, scaler, use_context, train_noise_shape)
         
         losses['train'].append((e, train_loss))
         lr_scheduler.step()
