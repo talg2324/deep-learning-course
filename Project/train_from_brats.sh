@@ -13,4 +13,5 @@ python main.py \
   --num_epochs 20 \
   --val_every_n_epochs 5 \
   --name ${name} \
-  --conditioning context
+  --conditioning class \
+  --batch_size 32

@@ -29,7 +29,8 @@ def load_autoencoder(bundle_target,
 
 
 def load_unet(bundle_target,
-              n_classes=6,
+              context_conditioning: bool,
+              n_classes: int=6,
               override_model_cfg_json: Optional[str] = None,
               override_weights_load_path: Optional[str] = None):
     model_json = (
@@ -42,24 +43,26 @@ def load_unet(bundle_target,
     
     # Build U-Net manually with class conditioning
     net_params = config['network_def']  # Not all params are pre-evaluated
-    # # TODO - notice that this unet does not use context conditioning, it uses class embedding.
-    # unet = DiffusionModelUNet(spatial_dims=config.get_parsed_content('spatial_dims'),
-    #                           in_channels=config['latent_channels'],
-    #                           out_channels=config['latent_channels'],
-    #                           num_channels=net_params['num_channels'],
-    #                           attention_levels=net_params['attention_levels'],
-    #                           num_head_channels=net_params['num_head_channels'],
-    #                           num_res_blocks=net_params['num_res_blocks'],
-    #                           num_class_embeds=n_classes).to(device)
+
+    if context_conditioning:
+        unet = DiffusionModelUNet(spatial_dims=config.get_parsed_content('spatial_dims'),
+                                in_channels=config['latent_channels'],
+                                out_channels=config['latent_channels'],
+                                num_channels=net_params['num_channels'],
+                                attention_levels=net_params['attention_levels'],
+                                num_head_channels=net_params['num_head_channels'],
+                                num_res_blocks=net_params['num_res_blocks'],
+                                with_conditioning=True, cross_attention_dim=1).to(device)
+    else:
+        unet = DiffusionModelUNet(spatial_dims=config.get_parsed_content('spatial_dims'),
+                                in_channels=config['latent_channels'],
+                                out_channels=config['latent_channels'],
+                                num_channels=net_params['num_channels'],
+                                attention_levels=net_params['attention_levels'],
+                                num_head_channels=net_params['num_head_channels'],
+                                num_res_blocks=net_params['num_res_blocks'],
+                                num_class_embeds=n_classes).to(device)
     
-    unet = DiffusionModelUNet(spatial_dims=config.get_parsed_content('spatial_dims'),
-                              in_channels=config['latent_channels'],
-                              out_channels=config['latent_channels'],
-                              num_channels=net_params['num_channels'],
-                              attention_levels=net_params['attention_levels'],
-                              num_head_channels=net_params['num_head_channels'],
-                              num_res_blocks=net_params['num_res_blocks'],
-                              with_conditioning=True, cross_attention_dim=1).to(device)
     weights_load_path = (
         override_weights_load_path
         if override_weights_load_path is not None

@@ -92,7 +92,9 @@ def train_loop(unet, autoencoder, inferer, dl, L, optimizer, use_context, noise_
                 optimizer.step()
                 total_loss += loss.item()
                 pbar.set_postfix({"loss": loss.item()})
-    return total_loss / len(dl)
+        avg_loss = total_loss / len(dl)
+        pbar.set_postfix({"loss": avg_loss})
+    return avg_loss
 
 
 def val_loop(unet, autoencoder, inferer, dl, L, use_context, noise_shape):
@@ -124,7 +126,9 @@ def val_loop(unet, autoencoder, inferer, dl, L, use_context, noise_shape):
                 loss = L(noise_pred.float(), noise.float())
                 total_loss += loss.item()
                 pbar.set_postfix({"loss": loss.item()})
-    return total_loss / len(dl)
+        avg_loss = total_loss / len(dl)
+        pbar.set_postfix({"loss": avg_loss})
+    return avg_loss
 
 
 def sample(unet, autoencoder, inferer, scheduler, noise_shape, im_log_path, n_classes=6):
@@ -174,11 +178,11 @@ if __name__ == "__main__":
     print(f"Training dir: {logdir}")
 
     train_loader = DataLoader(CTSubset('../data/ct-rsna/train/', 'train_set_dropped_nans.csv',
-                                        size=256, flip_prob=0.5, subset_len=1024),
+                                        size=256, flip_prob=0.5, subset_len=2048),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     val_loader = DataLoader(CTSubset('../data/ct-rsna/validation/', 'validation_set_dropped_nans.csv',
-                                        size=256, flip_prob=0., subset_len=1024),
+                                        size=256, flip_prob=0., subset_len=2048),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     # Initialize models
@@ -186,13 +190,6 @@ if __name__ == "__main__":
                                    override_model_cfg_json=args.config,
                                    override_weights_load_path=args.resume_from_ckpt)
 
-    unet = load_unet(bundle_target=BUNDLE,
-                     override_model_cfg_json=args.config,
-                     override_weights_load_path=args.resume_from_ckpt)
-
-    # Train
-    # TODO - notice that the config below contains also model architecture params...
-    #  consider removing / using same config also to load the models above
     config = utils.model_config(BUNDLE, 'train_diffusion.json')
     scale_factor = compute_scale_factor(autoencoder, train_loader, device)
 
@@ -205,6 +202,11 @@ if __name__ == "__main__":
     else:
         use_context = False
         inferer = LatentDiffusionInfererWithClassConditioning(scheduler=scheduler, scale_factor=scale_factor)
+    
+    unet = load_unet(bundle_target=BUNDLE,
+                     context_conditioning=use_context,
+                     override_model_cfg_json=args.config,
+                     override_weights_load_path=args.resume_from_ckpt)
 
     optimizer = Adam(list(unet.parameters()) + list(autoencoder.parameters()), lr=args.lr)
     lr_scheduler = MultiStepLR(optimizer, milestones=[1000], gamma=0.1)
