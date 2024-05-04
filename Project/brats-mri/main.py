@@ -45,6 +45,7 @@ def run_init():
 
     return args
 
+
 def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
     autoencoder_ckpt_path = os.path.join(logdir, f"autoencoder_epoch_{epoch}.ckpt")
     diffusion_ckpt_path = os.path.join(logdir, f"diffusion_epoch_{epoch}.ckpt")
@@ -56,6 +57,7 @@ def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
     torch.save(unet.state_dict(), diffusion_ckpt_path)
     with open(losses_path, 'wb') as f:
         pickle.dump(losses_dict, f)
+
 
 def train_loop(unet, autoencoder, inferer, dl, L, optimizer, use_context, noise_shape):
     unet.train()
@@ -92,6 +94,7 @@ def train_loop(unet, autoencoder, inferer, dl, L, optimizer, use_context, noise_
                 pbar.set_postfix({"loss": loss.item()})
     return total_loss / len(dl)
 
+
 def val_loop(unet, autoencoder, inferer, dl, L, use_context, noise_shape):
     unet.eval()
     autoencoder.eval()
@@ -122,6 +125,7 @@ def val_loop(unet, autoencoder, inferer, dl, L, use_context, noise_shape):
                 total_loss += loss.item()
                 pbar.set_postfix({"loss": loss.item()})
     return total_loss / len(dl)
+
 
 def sample(unet, autoencoder, inferer, scheduler, noise_shape, im_log_path, n_classes=6):
     unet.eval()
