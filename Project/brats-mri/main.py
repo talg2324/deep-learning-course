@@ -186,13 +186,6 @@ if __name__ == "__main__":
                                    override_model_cfg_json=args.config,
                                    override_weights_load_path=args.resume_from_ckpt)
 
-    unet = load_unet(bundle_target=BUNDLE,
-                     override_model_cfg_json=args.config,
-                     override_weights_load_path=args.resume_from_ckpt)
-
-    # Train
-    # TODO - notice that the config below contains also model architecture params...
-    #  consider removing / using same config also to load the models above
     config = utils.model_config(BUNDLE, 'train_diffusion.json')
     scale_factor = compute_scale_factor(autoencoder, train_loader, device)
 
@@ -205,6 +198,11 @@ if __name__ == "__main__":
     else:
         use_context = False
         inferer = LatentDiffusionInfererWithClassConditioning(scheduler=scheduler, scale_factor=scale_factor)
+    
+    unet = load_unet(bundle_target=BUNDLE,
+                     context_conditioning=use_context,
+                     override_model_cfg_json=args.config,
+                     override_weights_load_path=args.resume_from_ckpt)
 
     optimizer = Adam(list(unet.parameters()) + list(autoencoder.parameters()), lr=args.lr)
     lr_scheduler = MultiStepLR(optimizer, milestones=[1000], gamma=0.1)
