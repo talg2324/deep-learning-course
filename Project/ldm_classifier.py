@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import torch
 import sys
@@ -9,6 +9,8 @@ sys.path.append('latent-diffusion')
 sys.path.append('latent-diffusion/ldm/data/')
 
 from ldm.models.diffusion.ddpm import LatentDiffusion
+from generative.networks.nets import DiffusionModelUNet, AutoencoderKL
+
 from torch.utils.data import Dataset
 from torch.cuda.amp import autocast
 
@@ -29,6 +31,10 @@ class DiffusionClassifierInterface:
         self._n_noise_samples = n_noise_samples
         self._random_seed = random_seed
         self.gen_noise()
+
+    @property
+    def device(self):
+        return self._device
 
     @property
     def n_noise_samples(self):
@@ -57,6 +63,15 @@ class DiffusionClassifierInterface:
     def n_train_timesteps(self):
         raise NotImplementedError
 
+    def get_noised_input(self, x0, t, noise):
+        raise NotImplementedError
+
+    def get_conditioning(self, cond_input):
+        raise NotImplementedError
+
+    def get_diffusion_noise_prediction(self, x0, t, conditioning):
+        raise NotImplementedError
+
     def get_class_hypotheses_for_batch(self, batch_size: int, classes: List[int]):
         """
         creates a list of mock labels (for each valid class hypothesis).
@@ -67,18 +82,6 @@ class DiffusionClassifierInterface:
         """
         c_hypotheses = [{'class_label': torch.tensor([c] * batch_size, device=self._device)} for c in classes]
         return c_hypotheses
-
-    @staticmethod
-    def get_classification_accuracy(pred_list, gt_list):
-        """
-        calculate classification accuracy
-        """
-        n_samples = float(len(pred_list))
-        n_correct = 0.
-        for y_hat, y_gt in zip(pred_list, gt_list):
-            if y_hat == y_gt:
-                n_correct += 1.
-        return 100. * (n_correct / n_samples)
     
     def classify_dataset(self,
                          dataset: Dataset,
@@ -132,7 +135,7 @@ class DiffusionClassifierInterface:
 
         :returns : torch.Tensor(L2 predicted label), torch.Tensor(L1 predicted label)
         """
-        
+
         l1_c_errs = []
         l2_c_errs = []
         for c_hypo in tqdm.auto.tqdm(c_hypotheses, desc="class hypothsis"):
@@ -146,7 +149,7 @@ class DiffusionClassifierInterface:
         l2_label_pred = self.extract_prediction_from_errs(l2_c_errs)
         l1_label_pred = self.extract_prediction_from_errs(l1_c_errs)
         return l2_label_pred, l1_label_pred
-    
+
     def eval_class_hypothesis_per_batch(self,
                                         x0,
                                         c,
@@ -165,7 +168,52 @@ class DiffusionClassifierInterface:
         :param t_sampling_stride: sampling rate of the diffusion time steps
         :param output_dtype: optional - change dtype to float16 to be more memory efficient
         """
-        raise NotImplementedError
+        ts = []
+        batch_size = x0.shape[0]
+        pred_errors = torch.zeros(self.n_train_timesteps // t_sampling_stride * n_trials, 2, device='cpu')
+
+        for t in range(t_sampling_stride // 2, self.n_train_timesteps, t_sampling_stride):
+            ts.extend([t] * n_trials)
+        with torch.inference_mode():
+            idx = 0
+            for _ in tqdm.auto.trange(len(ts) // batch_size + int(len(ts) % batch_size != 0),
+                                      desc="diffusion sampling"):
+                with autocast(enabled=True):
+                    batch_ts = torch.tensor(ts[idx: idx + batch_size]).to(self.device)
+
+                    noise = self.noise[:len(batch_ts)]
+
+                    latent_ = x0.repeat(len(batch_ts), 1, 1, 1)
+
+                    # noised_latent = self._model.q_sample(latent_, batch_ts, noise)
+                    noised_latent = self.get_noised_input(latent_, batch_ts, noise)
+
+                    t_input = batch_ts.to(self.device).half() if output_dtype == 'float16' else batch_ts.to(
+                        self.device)
+
+                    # prepare conditioning input
+                    cond_input = self.trim_cond_dict(c, len(batch_ts))
+
+                    # get condition embedding
+                    cond_emb = self.get_conditioning(cond_input)
+
+                    # get noise prediction from diffusion model
+                    noise_pred = self.get_diffusion_noise_prediction(noised_latent, t_input, cond_emb)
+
+                    l2_loss = mean_flat((noise - noise_pred) ** 2)
+                    l1_loss = mean_flat(torch.abs(noise - noise_pred))
+                    error = torch.cat([l2_loss.unsqueeze(1),
+                                       l1_loss.unsqueeze(1)], dim=1)
+
+                    pred_errors[idx: idx + len(batch_ts)] = error.detach().cpu()
+                    idx += len(batch_ts)
+        mean_pred_errors = pred_errors.view(self.n_train_timesteps // t_sampling_stride,
+                                            n_trials,
+                                            *pred_errors.shape[1:]).mean(dim=(0, 1))
+
+        l2_mean_err = mean_pred_errors[0]
+        l1_mean_err = mean_pred_errors[1]
+        return l2_mean_err, l1_mean_err
 
     @staticmethod
     def extract_prediction_from_errs(errs_and_labels_list):
@@ -182,7 +230,19 @@ class DiffusionClassifierInterface:
             if len(v) > length:
                 cond_dict[k] = v[:length]
         return cond_dict
-    
+
+    @staticmethod
+    def get_classification_accuracy(pred_list, gt_list):
+        """
+        calculate classification accuracy
+        """
+        n_samples = float(len(pred_list))
+        n_correct = 0.
+        for y_hat, y_gt in zip(pred_list, gt_list):
+            if y_hat == y_gt:
+                n_correct += 1.
+        return 100. * (n_correct / n_samples)
+
 
 class LdmClassifier(DiffusionClassifierInterface):
     """
@@ -204,7 +264,6 @@ class LdmClassifier(DiffusionClassifierInterface):
         assert n_noise_samples >= model.num_timesteps, f"n_noise_samples: {n_noise_samples} must be greater or equal from model.num_timesteps: {model.num_timesteps}"
         self._model = model
         super().__init__(device=model.device, n_noise_samples=n_noise_samples, random_seed=random_seed)
-        
 
     @property
     def model(self):
@@ -252,114 +311,93 @@ class LdmClassifier(DiffusionClassifierInterface):
         x0 = self.get_latent_batch(x0)
         return super(LdmClassifier, self).classify_batch(x0, c_hypotheses, n_trials, t_sampling_stride)
 
-    def eval_class_hypothesis_per_batch(self,
-                                        x0,
-                                        c,
-                                        n_trials: int = 1,
-                                        t_sampling_stride: int = 5,
-                                        output_dtype: str = 'float32'):
-        """
-        runs the core algorithm of the classifier.
-        calculates noise prediction errors given the conditioning c.
-        returns noise prediction errors
-        TODO - currently L2, L1 only. VLB is not supported as LatentDiffusion does not predict the variance
+    def get_noised_input(self, x0, t, noise):
+        return self._model.q_sample(x0, t, noise)
 
-        :param x0: diffusion model input - latent representation of the input batch
-        :param c: conditioning
+    def get_conditioning(self, cond_input):
+        cond_emb = self._model.get_learned_conditioning(cond_input)
+        # prepare condition embedding dict in correct form for diffusion_model.forward
+        key = 'c_concat' if self._model.model.conditioning_key == 'concat' else 'c_crossattn'
+        cond_emb = {key: [cond_emb]}
+        return cond_emb
+
+    def get_diffusion_noise_prediction(self, x0, t, conditioning):
+        noise_pred = self._model.model(x0, t, **conditioning)
+        return noise_pred
+
+
+class MonaiLdmClassifier(DiffusionClassifierInterface):
+    def __init__(self,
+                 autoencoder:  AutoencoderKL,
+                 unet: DiffusionModelUNet,
+                 inferer,
+                 scheduler,
+                 n_noise_samples: int = 1024,
+                 random_seed: int = 42,
+                 input_dims: Tuple[int, int, int] = (1, 256, 256)
+                 ):
+        self._input_dims = input_dims
+        self._autoencoder = autoencoder
+        self._unet = unet
+        # TODO - check if inferer is really needed...
+        self._inferer = inferer
+
+        self._scheduler = scheduler
+        super().__init__(device=unet.device, n_noise_samples=n_noise_samples, random_seed=random_seed)
+
+    @property
+    def unet(self):
+        return self._unet
+
+    @property
+    def scheduler(self):
+        return self._scheduler
+
+    @property
+    def input_dims(self):
+        return self._input_dims
+
+    @property
+    def n_train_timesteps(self):
+        return self._scheduler.scheduler.num_train_timesteps
+
+    def get_noised_input(self, x0, t, noise):
+        return self.scheduler.add_noise(x0, noise, t)
+
+    #  TODO - figure out what to do here
+    def get_conditioning(self, cond_input):
+        pass
+
+    def get_diffusion_noise_prediction(self, x0, t, conditioning):
+        return self.unet(x0, t, conditioning)
+
+    def get_latent_batch(self, batch):
+        """
+        prepares input for the latent diffusion model.
+
+        :param batch: raw input batch from dataloader.
+                      assuming structure {
+                                            'image': List[torch.Tensor],
+                                            'class_label': List[torch.Tensor],
+                                            'human_label': List[str]
+                                         }
+        """
+        z_mu, z_sigma = self._autoencoder.encode(batch['image'])
+        return z_mu
+
+    def classify_batch(self,
+                       x0,
+                       c_hypotheses,
+                       n_trials: int = 1,
+                       t_sampling_stride: int = 5):
+        """
+        classify a single batch
+        :param x0: diffusion input
+        :param c_hypotheses: conditioning hypothesis input
         :param n_trials: number of trials to do for each sample. TODO - need to revisit how this is different than the batch...
         :param t_sampling_stride: sampling rate of the diffusion time steps
-        :param output_dtype: optional - change dtype to float16 to be more memory efficient
+
+        :returns : torch.Tensor(L2 predicted label), torch.Tensor(L1 predicted label)
         """
-        ts = []
-        batch_size = x0.shape[0]
-        pred_errors = torch.zeros(self.n_train_timesteps // t_sampling_stride * n_trials, 2, device='cpu')
-
-        for t in range(t_sampling_stride // 2, self.n_train_timesteps, t_sampling_stride):
-            ts.extend([t] * n_trials)
-        with torch.inference_mode():
-            idx = 0
-            for _ in tqdm.auto.trange(len(ts) // batch_size + int(len(ts) % batch_size != 0),
-                                      desc="diffusion sampling"):
-                with autocast(enabled=True):
-                    batch_ts = torch.tensor(ts[idx: idx + batch_size]).to(self._model.device)
-
-                    noise = self.noise[:len(batch_ts)]
-
-                    latent_ = x0.repeat(len(batch_ts), 1, 1, 1)
-
-                    noised_latent = self._model.q_sample(latent_, batch_ts, noise)
-
-                    t_input = batch_ts.to(self._model.device).half() if output_dtype == 'float16' else batch_ts.to(
-                        self._model.device)
-                    cond_input = self.trim_cond_dict(c, len(batch_ts))
-
-                    # get condition embedding
-                    cond_emb = self._model.get_learned_conditioning(cond_input)
-
-                    # prepare condition embedding dict in correct form for diffusion_model.forward
-                    key = 'c_concat' if self._model.model.conditioning_key == 'concat' else 'c_crossattn'
-                    cond_emb = {key: [cond_emb]}
-
-                    model_output = self._model.model(noised_latent, t_input, **cond_emb)
-
-                    # B, C = noised_latent.shape[:2]
-
-                    ### NOTICE - here I made a change that I do not understand. we must understand if our model outputs a different output than DiT_XL_2 that was originally used. ###
-                    ###  on one side, it seems that our model is supposed to return x_recon, and not noise prediction. but looking at the results, I am getting the impression it is indeed noise pred...
-
-                    # noise_pred, model_var_values = torch.split(model_output, C, dim=1)
-                    noise_pred = model_output
-
-                    ###################### VB - non functional - commented out ATM ###############
-
-                    # # compute MSE
-                    # mse = mean_flat((noise - noise_pred) ** 2)
-                    # l1_loss = mean_flat(torch.abs(noise - noise_pred))
-
-                    # # VB
-                    # true_mean, _, true_log_variance_clipped = model.q_posterior(x_start=latent_, x_t=noised_latent, t=t_input)
-
-                    # (
-                    #     model_mean,
-                    #     posterior_variance,
-                    #     posterior_log_variance,
-                    #     model_out
-                    # ) = diffusion.p_mean_variance(
-                    #     x=noised_latent,
-                    #     c=cond_emb,
-                    #     t=t_input,
-                    #     clip_denoised=False,
-                    #     return_model_output=True
-                    #     )
-
-                    # kl = normal_kl(
-                    #     true_mean, true_log_variance_clipped, model_mean, posterior_log_variance
-                    # )
-                    # kl = mean_flat(kl) / np.log(2.0)
-
-                    # # NLL
-                    # decoder_nll = -discretized_gaussian_log_likelihood(
-                    #     latent_, means=model_mean, log_scales=0.5 * posterior_log_variance
-                    # )
-                    # decoder_nll = mean_flat(decoder_nll) / np.log(2.0)
-
-                    # error = torch.cat([mse.unsqueeze(1),
-                    #                     l1_loss.unsqueeze(1),
-                    #                     kl.unsqueeze(1),
-                    #                     decoder_nll.unsqueeze(1)], dim=1)
-
-                    l2_loss = mean_flat((noise - noise_pred) ** 2)
-                    l1_loss = mean_flat(torch.abs(noise - noise_pred))
-                    error = torch.cat([l2_loss.unsqueeze(1),
-                                       l1_loss.unsqueeze(1)], dim=1)
-
-                    pred_errors[idx: idx + len(batch_ts)] = error.detach().cpu()
-                    idx += len(batch_ts)
-        mean_pred_errors = pred_errors.view(self.n_train_timesteps // t_sampling_stride,
-                                            n_trials,
-                                            *pred_errors.shape[1:]).mean(dim=(0, 1))
-
-        l2_mean_err = mean_pred_errors[0]
-        l1_mean_err = mean_pred_errors[1]
-        return l2_mean_err, l1_mean_err
-
+        x0 = self.get_latent_batch(x0)
+        return super(MonaiLdmClassifier, self).classify_batch(x0, c_hypotheses, n_trials, t_sampling_stride)
