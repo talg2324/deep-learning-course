@@ -227,6 +227,8 @@ if __name__ == "__main__":
 
     for e in range(1, args.num_epochs+1):
         print(f'Epoch #[{e}/{args.num_epochs}]:')
+        sample(unet, autoencoder, inferer, scheduler, sample_noise_shape,
+                '123', len(train_loader.dataset.class_names))
 
         train_loss = train_loop(unet, autoencoder, inferer, train_loader,
                                 L, optimizer, scaler, use_context, train_noise_shape)

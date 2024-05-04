@@ -10,16 +10,22 @@
 
 import numpy as np
 import torch
-from monai.utils import first
+import tqdm
 from monai.utils.type_conversion import convert_to_numpy
 
 
 def compute_scale_factor(autoencoder, train_loader, device):
+    latent_vectors = []
     with torch.no_grad():
-        check_data = first(train_loader)
-        z = autoencoder.encode_stage_2_inputs(check_data["image"].to(device))
-    scale_factor = 1 / torch.std(z)
-    return scale_factor.item()
+        with tqdm.tqdm(train_loader, desc='Computing scale factor') as pbar:
+            for data in pbar:
+                z = autoencoder.encode_stage_2_inputs(data["image"].to(device))
+                latent_vectors.append(z.cpu())
+
+        scale_factor = 1. / torch.cat(latent_vectors).std().item()
+        pbar.set_postfix(scale_factor=f'{scale_factor:.4f}')
+    return scale_factor
+    
 
 
 def normalize_image_to_uint8(image):
