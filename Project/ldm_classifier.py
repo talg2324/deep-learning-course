@@ -330,7 +330,6 @@ class MonaiLdmClassifier(DiffusionClassifierInterface):
     def __init__(self,
                  autoencoder:  AutoencoderKL,
                  unet: DiffusionModelUNet,
-                 inferer,
                  scheduler,
                  n_noise_samples: int = 1024,
                  random_seed: int = 42,
@@ -339,8 +338,6 @@ class MonaiLdmClassifier(DiffusionClassifierInterface):
         self._input_dims = input_dims
         self._autoencoder = autoencoder
         self._unet = unet
-        # TODO - check if inferer is really needed...
-        self._inferer = inferer
 
         self._scheduler = scheduler
         super().__init__(device=unet.device, n_noise_samples=n_noise_samples, random_seed=random_seed)
