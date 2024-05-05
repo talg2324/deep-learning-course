@@ -75,12 +75,16 @@ def train_loop(unet, autoencoder, inferer, dl, L, optimizer, scaler, use_context
                 timesteps = torch.randint(0, inferer.scheduler.num_train_timesteps,
                                           (ims.shape[0],), device=device).long()
                 if use_context:
+                    if not use_conditioning:
+                        condition = None
+                    else:
+                        condition = labels.view(-1, 1, 1).to(dtype=torch.float32)
                     noise_pred = inferer(inputs=ims,
                                         autoencoder_model=autoencoder,
                                         diffusion_model=unet,
                                         noise=noise,
                                         timesteps=timesteps,
-                                        condition=labels.view(-1, 1, 1).to(dtype=torch.float32))
+                                        condition=condition)
                 else:
                     noise_pred = inferer(inputs=ims,
                                         autoencoder_model=autoencoder,
@@ -112,12 +116,16 @@ def val_loop(unet, autoencoder, inferer, dl, L, use_context, noise_shape):
                 timesteps = torch.randint(0, inferer.scheduler.num_train_timesteps,
                                           (ims.shape[0],), device=device).long()
                 if use_context:
+                    if not use_conditioning:
+                        condition = None
+                    else:
+                        condition = labels.view(-1, 1, 1).to(dtype=torch.float32)
                     noise_pred = inferer(inputs=ims,
                                         autoencoder_model=autoencoder,
                                         diffusion_model=unet,
                                         noise=noise,
                                         timesteps=timesteps,
-                                        condition=labels.view(-1, 1, 1).to(dtype=torch.float32))
+                                        condition=condition)
                 else:
                     noise_pred = inferer(inputs=ims,
                                         autoencoder_model=autoencoder,
@@ -158,8 +166,12 @@ def log_ims(unet, autoencoder, inferer, scheduler, noise_shape,
     for n in range(n_classes):
         noise = torch.randn(noise_shape, device=device)
         with autocast(enabled=True):
+            # TODO - better pass this as argument and not use as global
             if use_context:
-                label = torch.full((1, 1, 1), n, dtype=torch.float32, device=device)
+                if not use_conditioning:
+                    label = None
+                else:
+                    label = torch.full((1, 1, 1), n, dtype=torch.float32, device=device)
                 _, images = inferer.sample(input_noise=noise,
                                         save_intermediates=True,
                                         intermediate_steps=250,
@@ -214,7 +226,8 @@ if __name__ == "__main__":
     scheduler = config.get_parsed_content('noise_scheduler')
     latent_shape = config.get_parsed_content('latent_shape')
 
-    if args.conditioning == 'context':
+    use_conditioning = args.conditioning == 'none'
+    if args.conditioning in ['context', 'none']:
         use_context = True
         inferer = LatentDiffusionInferer(scheduler=scheduler, scale_factor=scale_factor)
     else:
@@ -222,9 +235,11 @@ if __name__ == "__main__":
         inferer = LatentDiffusionInfererWithClassConditioning(scheduler=scheduler, scale_factor=scale_factor)
     
     unet = load_unet(bundle_target=BUNDLE,
+                     use_conditioning=use_conditioning,
                      context_conditioning=use_context,
                      override_model_cfg_json=args.config,
-                     override_weights_load_path=args.resume_from_ckpt)
+                     override_weights_load_path=args.resume_from_ckpt,
+                     )
 
     optimizer = Adam(list(unet.parameters()) + list(autoencoder.parameters()), lr=args.lr)
     lr_scheduler = MultiStepLR(optimizer, milestones=[1000], gamma=0.1)

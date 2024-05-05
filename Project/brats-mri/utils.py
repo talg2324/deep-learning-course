@@ -76,7 +76,7 @@ def create_arg_parser():
     parser.add_argument('--save_ckpt_every_n', type=int, default=None,
                         help='periodic ckpt saving')
     
-    parser.add_argument('--conditioning', type=str, choices=['class', 'context'],
+    parser.add_argument('--conditioning', type=str, choices=['class', 'context', 'none'],
                         required=True, help='context or class conditioning with the class label')
     
     parser.add_argument('--lr', type=float, default=1e-4)
