@@ -5,6 +5,7 @@ import torch
 import monai
 from PIL import Image
 from tqdm import tqdm
+from monai.utils import first
 from generative.inferers import LatentDiffusionInferer
 
 from torch.utils.data import DataLoader
@@ -132,9 +133,23 @@ def val_loop(unet, autoencoder, inferer, dl, L, use_context, noise_shape):
     return avg_loss
 
 
-def sample(unet, autoencoder, inferer, scheduler, noise_shape, im_log_path, n_classes=6):
+def log_ims(unet, autoencoder, inferer, scheduler, noise_shape,
+            im_tag, data_sample, n_classes=6):
+
     unet.eval()
     autoencoder.eval()
+
+    input_ims = data_sample['image'].to(device)
+    encode_decode, _, _ = autoencoder(input_ims)
+
+    input_col = torch.vstack([im.squeeze() for im in input_ims])
+    output_col = torch.vstack([im.squeeze() for im in encode_decode])
+    log_im = torch.hstack((input_col, output_col)) * 255
+
+    log_im = log_im.to(torch.uint8).cpu().numpy()
+    log_im = Image.fromarray(log_im)
+    log_im.save(im_tag + '_encoder.png')
+
     scheduler.set_timesteps(num_inference_steps=1000)
 
     rows = []
@@ -164,7 +179,7 @@ def sample(unet, autoencoder, inferer, scheduler, noise_shape, im_log_path, n_cl
         rows.append(row)
     rows = torch.vstack(rows).clamp(0, 1) * 255
     log_im = Image.fromarray(rows.to(torch.uint8).cpu().numpy())
-    log_im.save(im_log_path)
+    log_im.save(im_tag + '_sample.png')
 
 
 if __name__ == "__main__":
@@ -179,11 +194,11 @@ if __name__ == "__main__":
     print(f"Training dir: {logdir}")
 
     train_loader = DataLoader(CTSubset('../data/ct-rsna/train/', 'train_set_dropped_nans.csv',
-                                        size=256, flip_prob=0.5, subset_len=2048),
+                                        size=240, flip_prob=0.5, subset_len=1024),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     val_loader = DataLoader(CTSubset('../data/ct-rsna/validation/', 'validation_set_dropped_nans.csv',
-                                        size=256, flip_prob=0., subset_len=2048),
+                                        size=240, flip_prob=0., subset_len=1024),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     # Initialize models
@@ -199,7 +214,7 @@ if __name__ == "__main__":
 
     if args.conditioning == 'context':
         use_context = True
-        inferer = LatentDiffusionInferer(scheduler=scheduler,scale_factor=scale_factor)
+        inferer = LatentDiffusionInferer(scheduler=scheduler, scale_factor=scale_factor)
     else:
         use_context = False
         inferer = LatentDiffusionInfererWithClassConditioning(scheduler=scheduler, scale_factor=scale_factor)
@@ -224,9 +239,14 @@ if __name__ == "__main__":
         'validation': []
     }
 
+    im_tag = os.path.join(im_log, '000')
+    log_ims(unet, autoencoder, inferer, scheduler, sample_noise_shape,
+            im_tag, first(val_loader), len(train_loader.dataset.class_names))
+
     for e in range(1, args.num_epochs+1):
         print(f'Epoch #[{e}/{args.num_epochs}]:')
-
+        
+        
         train_loss = train_loop(unet, autoencoder, inferer, train_loader,
                                 L, optimizer, scaler, use_context, train_noise_shape)
         
@@ -238,9 +258,9 @@ if __name__ == "__main__":
                                     L, use_context, train_noise_shape)
 
             losses['validation'].append((e, val_loss))
-            im_file = os.path.join(im_log, f'{e}'.zfill(3) + '.png')
-            sample(unet, autoencoder, inferer, scheduler, sample_noise_shape,
-                   im_file, len(train_loader.dataset.class_names))
+            im_tag = os.path.join(im_log, f'{e}'.zfill(3))
+            log_ims(unet, autoencoder, inferer, scheduler, sample_noise_shape,
+                   im_tag, first(val_loader), len(train_loader.dataset.class_names))
 
         if e % args.save_ckpt_every_n == 0:
             save_epoch(logdir=logdir,

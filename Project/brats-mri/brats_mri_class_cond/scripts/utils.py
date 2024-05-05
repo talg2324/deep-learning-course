@@ -11,19 +11,25 @@
 import numpy as np
 import torch
 import tqdm
+from monai.utils import first
 from monai.utils.type_conversion import convert_to_numpy
 
 
-def compute_scale_factor(autoencoder, train_loader, device):
+def compute_scale_factor(autoencoder, train_loader, device, fast=True):
     latent_vectors = []
     with torch.no_grad():
-        with tqdm.tqdm(train_loader, desc='Computing scale factor') as pbar:
-            for data in pbar:
-                z = autoencoder.encode_stage_2_inputs(data["image"].to(device))
-                latent_vectors.append(z.cpu())
+        if fast:
+            data = first(train_loader)
+            z = autoencoder.encode_stage_2_inputs(data["image"].to(device))
+            latent_vectors.append(z.cpu())
 
+        else:
+            with tqdm.tqdm(train_loader, desc='Computing scale factor') as pbar:
+                for data in pbar:
+                    z = autoencoder.encode_stage_2_inputs(data["image"].to(device))
+                    latent_vectors.append(z.cpu())
+                pbar.set_postfix(scale_factor=f'{scale_factor:.4f}')
         scale_factor = 1. / torch.cat(latent_vectors).std().item()
-        pbar.set_postfix(scale_factor=f'{scale_factor:.4f}')
     return scale_factor
     
 
