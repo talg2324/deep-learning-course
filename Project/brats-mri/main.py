@@ -227,7 +227,7 @@ if __name__ == "__main__":
     scheduler = config.get_parsed_content('noise_scheduler')
     latent_shape = config.get_parsed_content('latent_shape')
 
-    use_conditioning = args.conditioning == 'none'
+    use_conditioning = args.conditioning != 'none'
     if args.conditioning in ['context', 'none']:
         use_context = True
         inferer = LatentDiffusionInferer(scheduler=scheduler, scale_factor=scale_factor)
