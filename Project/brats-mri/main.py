@@ -93,6 +93,7 @@ def train_loop(unet, autoencoder, inferer, dl, L, optimizer, scaler, use_context
                                         timesteps=timesteps,
                                         class_labels=labels)
                 loss = L(noise_pred.float(), noise.float())
+                # TODO - in the tutorials, this is done outside of the autocast scope!!!
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
