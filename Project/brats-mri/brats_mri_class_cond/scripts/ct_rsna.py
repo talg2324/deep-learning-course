@@ -58,10 +58,7 @@ class CTDataset(Dataset):
 
         human_label = self.class_names[int(label)]
 
-        if im.shape[1] == 333:
-            print(f'Bad image:\n {abs_path}\n{human_label}')
-
-        return {'image': im, 'class_label': label, 'human_label': human_label}
+        return {'image': im.T, 'class_label': label, 'human_label': human_label}
     
 class CTSubset(CTDataset):
     """
