@@ -134,12 +134,14 @@ def val_loop(unet, autoencoder, inferer, dl, L, use_context, noise_shape):
 
 
 def log_ims(unet, autoencoder, inferer, scheduler, noise_shape,
-            im_tag, data_sample, n_classes=6):
+            im_tag, data_sample, n_classes=6, max_ims=4):
 
     unet.eval()
     autoencoder.eval()
 
-    input_ims = data_sample['image'].to(device)
+    max_ims = min(max_ims, len(data_sample['image']))
+
+    input_ims = data_sample['image'].to(device)[:max_ims]
     encode_decode, _, _ = autoencoder(input_ims)
 
     input_col = torch.vstack([im.squeeze() for im in input_ims])
