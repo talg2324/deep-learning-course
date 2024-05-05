@@ -146,7 +146,7 @@ def log_ims(unet, autoencoder, inferer, scheduler, noise_shape,
 
     input_col = torch.vstack([im.squeeze() for im in input_ims])
     output_col = torch.vstack([im.squeeze() for im in encode_decode])
-    log_im = torch.hstack((input_col, output_col)) * 255
+    log_im = torch.hstack((input_col, output_col)).clamp(0, 1) * 255
 
     log_im = log_im.to(torch.uint8).cpu().numpy()
     log_im = Image.fromarray(log_im)
