@@ -47,7 +47,7 @@ class CTDataset(Dataset):
     def __getitem__(self, n):
         id, label = self.ids.iloc[n], self.labels[n]
         abs_path = os.path.join(self.data_dir, f'{id}.npy')
-        im = np.load(abs_path).astype(np.float32)
+        im = np.load(abs_path).astype(np.float32).T
 
         if self.transform:
             im = self.transform(im)
@@ -58,7 +58,7 @@ class CTDataset(Dataset):
 
         human_label = self.class_names[int(label)]
 
-        return {'image': im.T, 'class_label': label, 'human_label': human_label}
+        return {'image': im, 'class_label': label, 'human_label': human_label}
     
 class CTSubset(CTDataset):
     """
