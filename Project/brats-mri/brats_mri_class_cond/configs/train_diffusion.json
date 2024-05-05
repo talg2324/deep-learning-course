@@ -61,7 +61,8 @@
         "schedule": "scaled_linear_beta",
         "num_train_timesteps": 1000,
         "beta_start": 0.0015,
-        "beta_end": 0.0195
+        "beta_end": 0.0195,
+        "clip_sample": false
     },
     "loss": {
         "_target_": "torch.nn.MSELoss"
