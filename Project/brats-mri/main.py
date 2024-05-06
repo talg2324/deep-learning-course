@@ -1,6 +1,5 @@
 import os
 import sys
-import pickle
 import torch
 import monai
 from PIL import Image
@@ -56,8 +55,7 @@ def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
     # Save the checkpoint
     torch.save(autoencoder.state_dict(), autoencoder_ckpt_path)
     torch.save(unet.state_dict(), diffusion_ckpt_path)
-    with open(losses_path, 'wb') as f:
-        pickle.dump(losses_dict, f)
+    torch.save(losses_dict, losses_path)
 
 
 def train_loop(unet, autoencoder, inferer, dl, L, optimizer, use_context, noise_shape):
@@ -100,45 +98,44 @@ def train_loop(unet, autoencoder, inferer, dl, L, optimizer, use_context, noise_
         pbar.set_postfix({"loss": avg_loss})
     return avg_loss
 
-
+@torch.no_grad()
 def val_loop(unet, autoencoder, inferer, dl, L, use_context, noise_shape):
     unet.eval()
     autoencoder.eval()
     total_loss = 0
-    with torch.no_grad():
-        with tqdm(dl, desc='  Validation loop', total=len(dl)) as pbar:
-            for batch in pbar:
-                ims = batch['image'].to(device)
-                labels = batch['class_label'].to(device)
-                noise = torch.randn(noise_shape, device=device)
-                timesteps = torch.randint(0, inferer.scheduler.num_train_timesteps,
-                                          (ims.shape[0],), device=device).long()
-                if use_context:
-                    if not use_conditioning:
-                        condition = None
-                    else:
-                        condition = labels.view(-1, 1, 1).to(dtype=torch.float32)
-                    noise_pred = inferer(inputs=ims,
-                                        autoencoder_model=autoencoder,
-                                        diffusion_model=unet,
-                                        noise=noise,
-                                        timesteps=timesteps,
-                                        condition=condition)
+    with tqdm(dl, desc='  Validation loop', total=len(dl)) as pbar:
+        for batch in pbar:
+            ims = batch['image'].to(device)
+            labels = batch['class_label'].to(device)
+            noise = torch.randn(noise_shape, device=device)
+            timesteps = torch.randint(0, inferer.scheduler.num_train_timesteps,
+                                        (ims.shape[0],), device=device).long()
+            if use_context:
+                if not use_conditioning:
+                    condition = None
                 else:
-                    noise_pred = inferer(inputs=ims,
-                                        autoencoder_model=autoencoder,
-                                        diffusion_model=unet,
-                                        noise=noise,
-                                        timesteps=timesteps,
-                                        class_labels=labels)
-                loss = L(noise_pred.float(), noise.float())
-                total_loss += loss.item()
-                pbar.set_postfix({"loss": loss.item()})
-        avg_loss = total_loss / len(dl)
-        pbar.set_postfix({"loss": avg_loss})
+                    condition = labels.view(-1, 1, 1).to(dtype=torch.float32)
+                noise_pred = inferer(inputs=ims,
+                                    autoencoder_model=autoencoder,
+                                    diffusion_model=unet,
+                                    noise=noise,
+                                    timesteps=timesteps,
+                                    condition=condition)
+            else:
+                noise_pred = inferer(inputs=ims,
+                                    autoencoder_model=autoencoder,
+                                    diffusion_model=unet,
+                                    noise=noise,
+                                    timesteps=timesteps,
+                                    class_labels=labels)
+            loss = L(noise_pred.float(), noise.float())
+            total_loss += loss.item()
+            pbar.set_postfix({"loss": loss.item()})
+    avg_loss = total_loss / len(dl)
+    pbar.set_postfix({"loss": avg_loss})
     return avg_loss
 
-
+@torch.no_grad()
 def log_ims(unet, autoencoder, inferer, noise_shape,
             im_tag, data_sample, n_classes=6, max_ims=4):
 
@@ -150,11 +147,10 @@ def log_ims(unet, autoencoder, inferer, noise_shape,
     input_ims = data_sample['image'].to(device)[:max_ims]
     encode_decode, _, _ = autoencoder(input_ims)
 
-    input_col = torch.vstack([im.squeeze() for im in input_ims])
+    input_col = utils.rescale_inputs(torch.vstack([im.squeeze() for im in input_ims]))
     output_col = torch.vstack([im.squeeze() for im in encode_decode])
-    log_im = torch.hstack((input_col, output_col)).clamp(0, 1) * 255
+    log_im = utils.rescale_outputs(torch.hstack((input_col, output_col)))
 
-    log_im = log_im.to(torch.uint8).cpu().numpy()
     log_im = Image.fromarray(log_im)
     log_im.save(im_tag + '_encoder.png')
 
@@ -173,7 +169,7 @@ def log_ims(unet, autoencoder, inferer, noise_shape,
                 label = torch.full((1, 1, 1), n, dtype=torch.float32, device=device)
             _, images = inferer.sample(input_noise=noise,
                                     save_intermediates=True,
-                                    intermediate_steps=250,
+                                    intermediate_steps=200,
                                     autoencoder_model=autoencoder,
                                     diffusion_model=unet,
                                     scheduler=scheduler,
@@ -182,7 +178,7 @@ def log_ims(unet, autoencoder, inferer, noise_shape,
             label = torch.full((1,), n, dtype=torch.long, device=device)
             _, images = inferer.sample(input_noise=noise,
                                     save_intermediates=True,
-                                    intermediate_steps=250,
+                                    intermediate_steps=200,
                                     autoencoder_model=autoencoder,
                                     diffusion_model=unet,
                                     scheduler=scheduler,
@@ -190,8 +186,7 @@ def log_ims(unet, autoencoder, inferer, noise_shape,
 
         row = torch.cat(images, dim=-1).squeeze() # H x (4xW)
         rows.append(row)
-    rows = torch.vstack(rows).clamp(0, 1) * 255
-    log_im = Image.fromarray(rows.to(torch.uint8).cpu().numpy())
+    log_im = utils.rescale_outputs(torch.vstack(rows))
     log_im.save(im_tag + '_sample.png')
 
 

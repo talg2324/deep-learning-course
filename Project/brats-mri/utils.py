@@ -1,10 +1,27 @@
 import os
 import monai
+import torch
 import shutil
 from monai.bundle import ConfigParser
 import argparse
 
 PRETRAINED_MODEL_NAME = 'brats_mri_axial_slices_generative_diffusion'
+
+def rescale_outputs(im):
+    """
+    Model outputs are in [0, 1]
+    Rescale them to [0, 255] and convert to uint8 so they can be displayed
+    """
+    im = im.clamp(0, 1) * 255
+    return im.to(torch.uint8).cpu().numpy()
+
+
+def rescale_inputs(im):
+    """
+    Models expect inputs in [-1, 1] but return [0, 1]
+    Need to rescale inputs to view them
+    """
+    return 0.5 * im + 0.5
 
 
 def model_config(bundle_target, file_name):

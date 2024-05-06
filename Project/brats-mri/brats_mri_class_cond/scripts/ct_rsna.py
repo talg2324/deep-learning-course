@@ -53,7 +53,7 @@ class CTDataset(Dataset):
             im = self.transform(im)
 
         # TODO - decide if we want the data to have mean=0, std=1, or to be in the range [-1, 1].. it is much different
-        # rescale image dynamic range to [0, 1]
+        # rescale image dynamic range to [-1, 1]
         im = rescale_im_dynamic_range(im)
 
         human_label = self.class_names[int(label)]
@@ -79,5 +79,5 @@ def rescale_im_dynamic_range(im):
     if im_min == im_max:
         return torch.zeros_like(im)
     else:
-        im = (im - im_min) / (im_max - im_min)
+        im = 2 * (im - im_min) / (im_max - im_min) - 1
     return im
