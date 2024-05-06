@@ -16,14 +16,6 @@ def rescale_outputs(im):
     return im.to(torch.uint8).cpu().numpy()
 
 
-def rescale_inputs(im):
-    """
-    Models expect inputs in [-1, 1] but return [0, 1]
-    Need to rescale inputs to view them
-    """
-    return 0.5 * im + 0.5
-
-
 def model_config(bundle_target, file_name):
     model_config_file = os.path.join(bundle_target, "configs", file_name)
     

@@ -147,7 +147,7 @@ def log_ims(unet, autoencoder, inferer, noise_shape,
     input_ims = data_sample['image'].to(device)[:max_ims]
     encode_decode, _, _ = autoencoder(input_ims)
 
-    input_col = utils.rescale_inputs(torch.vstack([im.squeeze() for im in input_ims]))
+    input_col = torch.vstack([im.squeeze() for im in input_ims])
     output_col = torch.vstack([im.squeeze() for im in encode_decode])
     log_im = utils.rescale_outputs(torch.hstack((input_col, output_col)))
 
