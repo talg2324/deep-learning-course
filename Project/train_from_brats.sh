@@ -10,9 +10,9 @@ echo "Training ${name}..."
 cd brats-mri
 LD_LIBRARY_PATH=/opt/conda/lib \
 python main.py \
-  --num_epochs 20 \
-  --val_every_n_epochs 5 \
+  --num_epochs 500 \
+  --val_every_n_epochs 100 \
   --name ${name} \
-  --conditioning context \
-  --batch_size 32 \
-  --lr 0.00001
+  --conditioning none \
+  --batch_size 4 \
+  --lr 0.0001

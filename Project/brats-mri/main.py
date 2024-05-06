@@ -7,11 +7,11 @@ from PIL import Image
 from tqdm import tqdm
 from monai.utils import first
 from generative.inferers import LatentDiffusionInferer
+from generative.networks.schedulers import DDIMScheduler
 
 from torch.utils.data import DataLoader
 from torch.optim import Adam
-from torch.optim.lr_scheduler import MultiStepLR
-from torch.cuda.amp import autocast, GradScaler
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from pretrained import load_autoencoder, load_unet
 import utils
@@ -60,44 +60,41 @@ def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
         pickle.dump(losses_dict, f)
 
 
-def train_loop(unet, autoencoder, inferer, dl, L, optimizer, scaler, use_context, noise_shape):
+def train_loop(unet, autoencoder, inferer, dl, L, optimizer, use_context, noise_shape):
     unet.train()
-    autoencoder.train()
+    # autoencoder.train()
     total_loss = 0
     with tqdm(dl, desc='  Training loop', total=len(dl)) as pbar:
         for batch in pbar:
             ims = batch['image'].to(device)
             labels = batch['class_label'].to(device=device)
-            optimizer.zero_grad(set_to_none=True)
-            with autocast(enabled=True):
-
-                noise = torch.randn(noise_shape, device=device)
-                timesteps = torch.randint(0, inferer.scheduler.num_train_timesteps,
-                                          (ims.shape[0],), device=device).long()
-                if use_context:
-                    if not use_conditioning:
-                        condition = None
-                    else:
-                        condition = labels.view(-1, 1, 1).to(dtype=torch.float32)
-                    noise_pred = inferer(inputs=ims,
-                                        autoencoder_model=autoencoder,
-                                        diffusion_model=unet,
-                                        noise=noise,
-                                        timesteps=timesteps,
-                                        condition=condition)
+            noise = torch.randn(noise_shape, device=device)
+            timesteps = torch.randint(0, inferer.scheduler.num_train_timesteps,
+                                        (ims.shape[0],), device=device).long()
+            if use_context:
+                if not use_conditioning:
+                    condition = None
                 else:
-                    noise_pred = inferer(inputs=ims,
-                                        autoencoder_model=autoencoder,
-                                        diffusion_model=unet,
-                                        noise=noise,
-                                        timesteps=timesteps,
-                                        class_labels=labels)
-                loss = L(noise_pred.float(), noise.float())
-                pbar.set_postfix({"loss": loss.item()})
+                    condition = labels.view(-1, 1, 1).to(dtype=torch.float32)
+                noise_pred = inferer(inputs=ims,
+                                    autoencoder_model=autoencoder,
+                                    diffusion_model=unet,
+                                    noise=noise,
+                                    timesteps=timesteps,
+                                    condition=condition)
+            else:
+                noise_pred = inferer(inputs=ims,
+                                    autoencoder_model=autoencoder,
+                                    diffusion_model=unet,
+                                    noise=noise,
+                                    timesteps=timesteps,
+                                    class_labels=labels)
+            loss = L(noise_pred.float(), noise.float())
+            pbar.set_postfix({"loss": loss.item()})
 
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
             total_loss += loss.item()
         avg_loss = total_loss / len(dl)
         pbar.set_postfix({"loss": avg_loss})
@@ -142,7 +139,7 @@ def val_loop(unet, autoencoder, inferer, dl, L, use_context, noise_shape):
     return avg_loss
 
 
-def log_ims(unet, autoencoder, inferer, scheduler, noise_shape,
+def log_ims(unet, autoencoder, inferer, noise_shape,
             im_tag, data_sample, n_classes=6, max_ims=4):
 
     unet.eval()
@@ -161,34 +158,35 @@ def log_ims(unet, autoencoder, inferer, scheduler, noise_shape,
     log_im = Image.fromarray(log_im)
     log_im.save(im_tag + '_encoder.png')
 
-    scheduler.set_timesteps(num_inference_steps=1000)
-
+    scheduler = DDIMScheduler(num_train_timesteps=1000,
+                              beta_start=0.0015, beta_end=0.0195,
+                              schedule='scaled_linear_beta', clip_sample=False)
+    scheduler.set_timesteps(num_inference_steps=50)
     rows = []
-    for n in range(n_classes):
+    for n in range(4):
         noise = torch.randn(noise_shape, device=device)
-        with autocast(enabled=True):
-            # TODO - better pass this as argument and not use as global
-            if use_context:
-                if not use_conditioning:
-                    label = None
-                else:
-                    label = torch.full((1, 1, 1), n, dtype=torch.float32, device=device)
-                _, images = inferer.sample(input_noise=noise,
-                                        save_intermediates=True,
-                                        intermediate_steps=250,
-                                        autoencoder_model=autoencoder,
-                                        diffusion_model=unet,
-                                        scheduler=scheduler,
-                                        conditioning=label)
+        # TODO - better pass this as argument and not use as global
+        if use_context:
+            if not use_conditioning:
+                label = None
             else:
-                label = torch.full((1,), n, dtype=torch.long, device=device)
-                _, images = inferer.sample(input_noise=noise,
-                                        save_intermediates=True,
-                                        intermediate_steps=250,
-                                        autoencoder_model=autoencoder,
-                                        diffusion_model=unet,
-                                        scheduler=scheduler,
-                                        class_labels=label)   
+                label = torch.full((1, 1, 1), n, dtype=torch.float32, device=device)
+            _, images = inferer.sample(input_noise=noise,
+                                    save_intermediates=True,
+                                    intermediate_steps=250,
+                                    autoencoder_model=autoencoder,
+                                    diffusion_model=unet,
+                                    scheduler=scheduler,
+                                    conditioning=label)
+        else:
+            label = torch.full((1,), n, dtype=torch.long, device=device)
+            _, images = inferer.sample(input_noise=noise,
+                                    save_intermediates=True,
+                                    intermediate_steps=250,
+                                    autoencoder_model=autoencoder,
+                                    diffusion_model=unet,
+                                    scheduler=scheduler,
+                                    class_labels=label)   
 
         row = torch.cat(images, dim=-1).squeeze() # H x (4xW)
         rows.append(row)
@@ -209,11 +207,11 @@ if __name__ == "__main__":
     print(f"Training dir: {logdir}")
 
     train_loader = DataLoader(CTSubset('../data/ct-rsna/train/', 'train_set_dropped_nans.csv',
-                                        size=256, flip_prob=0.5, subset_len=1024),
+                                        size=256, flip_prob=0.5, subset_len=4),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     val_loader = DataLoader(CTSubset('../data/ct-rsna/validation/', 'validation_set_dropped_nans.csv',
-                                        size=256, flip_prob=0., subset_len=1024),
+                                        size=256, flip_prob=0., subset_len=4),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     # Initialize models
@@ -242,12 +240,11 @@ if __name__ == "__main__":
                      override_weights_load_path=args.resume_from_ckpt,
                      )
 
-    optimizer = Adam(list(unet.parameters()) + list(autoencoder.parameters()), lr=args.lr)
-    lr_scheduler = MultiStepLR(optimizer, milestones=[1000], gamma=0.1)
-    scaler = GradScaler()
+    optimizer = Adam(list(unet.parameters()), lr=args.lr)
+    lr_scheduler = CosineAnnealingLR(optimizer, args.num_epochs, eta_min=1e-6)
 
+    autoencoder.eval()
     # TODO - the autoencoder does not train with MSE,
-    #  also the diffusion might have more complex loss components, we should be careful here
     L = torch.nn.MSELoss().to(device)
     train_noise_shape = [args.batch_size] + latent_shape
     sample_noise_shape = [1] + latent_shape
@@ -258,7 +255,7 @@ if __name__ == "__main__":
     }
 
     im_tag = os.path.join(im_log, '000')
-    log_ims(unet, autoencoder, inferer, scheduler, sample_noise_shape,
+    log_ims(unet, autoencoder, inferer, sample_noise_shape,
             im_tag, first(val_loader), len(train_loader.dataset.class_names))
 
     for e in range(1, args.num_epochs+1):
@@ -266,7 +263,7 @@ if __name__ == "__main__":
         
         
         train_loss = train_loop(unet, autoencoder, inferer, train_loader,
-                                L, optimizer, scaler, use_context, train_noise_shape)
+                                L, optimizer, use_context, train_noise_shape)
         
         losses['train'].append((e, train_loss))
         lr_scheduler.step()
@@ -277,7 +274,7 @@ if __name__ == "__main__":
 
             losses['validation'].append((e, val_loss))
             im_tag = os.path.join(im_log, f'{e}'.zfill(3))
-            log_ims(unet, autoencoder, inferer, scheduler, sample_noise_shape,
+            log_ims(unet, autoencoder, inferer, sample_noise_shape,
                    im_tag, first(val_loader), len(train_loader.dataset.class_names))
 
         if e % args.save_ckpt_every_n == 0:
