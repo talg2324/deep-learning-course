@@ -93,12 +93,12 @@ def train_loop(unet, autoencoder, inferer, dl, L, optimizer, scaler, use_context
                                         timesteps=timesteps,
                                         class_labels=labels)
                 loss = L(noise_pred.float(), noise.float())
-                # TODO - in the tutorials, this is done outside of the autocast scope!!!
-                scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
-                total_loss += loss.item()
                 pbar.set_postfix({"loss": loss.item()})
+
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+            total_loss += loss.item()
         avg_loss = total_loss / len(dl)
         pbar.set_postfix({"loss": avg_loss})
     return avg_loss
