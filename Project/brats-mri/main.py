@@ -187,6 +187,7 @@ def log_ims(unet, autoencoder, inferer, noise_shape,
         row = torch.cat(images, dim=-1).squeeze() # H x (4xW)
         rows.append(row)
     log_im = utils.rescale_outputs(torch.vstack(rows))
+    log_im = Image.fromarray(log_im)
     log_im.save(im_tag + '_sample.png')
 
 
