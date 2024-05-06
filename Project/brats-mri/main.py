@@ -207,11 +207,11 @@ if __name__ == "__main__":
     print(f"Training dir: {logdir}")
 
     train_loader = DataLoader(CTSubset('../data/ct-rsna/train/', 'train_set_dropped_nans.csv',
-                                        size=256, flip_prob=0.5, subset_len=4),
+                                        size=256, flip_prob=0.5, subset_len=64),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     val_loader = DataLoader(CTSubset('../data/ct-rsna/validation/', 'validation_set_dropped_nans.csv',
-                                        size=256, flip_prob=0., subset_len=4),
+                                        size=256, flip_prob=0., subset_len=64),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     # Initialize models

@@ -14,5 +14,5 @@ python main.py \
   --val_every_n_epochs 200 \
   --name ${name} \
   --conditioning none \
-  --batch_size 4 \
+  --batch_size 32 \
   --lr 0.0001
