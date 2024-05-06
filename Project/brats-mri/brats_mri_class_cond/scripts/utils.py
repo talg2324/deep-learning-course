@@ -30,6 +30,7 @@ def compute_scale_factor(autoencoder, train_loader, device, fast=True):
                     latent_vectors.append(z.cpu())
                 pbar.set_postfix(scale_factor=f'{scale_factor:.4f}')
         scale_factor = 1. / torch.cat(latent_vectors).std().item()
+    print(f'Scale factor: {scale_factor:.5f}')
     return scale_factor
     
 
