@@ -62,7 +62,7 @@ def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
 
 def train_loop(unet, autoencoder, inferer, dl, L, optimizer, use_context, noise_shape):
     unet.train()
-    # autoencoder.train()
+    autoencoder.train()
     total_loss = 0
     with tqdm(dl, desc='  Training loop', total=len(dl)) as pbar:
         for batch in pbar:
@@ -243,7 +243,6 @@ if __name__ == "__main__":
     optimizer = Adam(list(unet.parameters()), lr=args.lr)
     lr_scheduler = CosineAnnealingLR(optimizer, args.num_epochs, eta_min=1e-6)
 
-    autoencoder.eval()
     # TODO - the autoencoder does not train with MSE,
     L = torch.nn.MSELoss().to(device)
     train_noise_shape = [args.batch_size] + latent_shape
