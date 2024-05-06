@@ -15,7 +15,7 @@ from monai.utils import first
 from monai.utils.type_conversion import convert_to_numpy
 
 
-def compute_scale_factor(autoencoder, train_loader, device, fast=True):
+def compute_scale_factor(autoencoder, train_loader, device, fast=False):
     latent_vectors = []
     with torch.no_grad():
         if fast:
