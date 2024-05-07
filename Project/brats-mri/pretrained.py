@@ -18,12 +18,12 @@ def load_autoencoder(bundle_target,
     device = config.get_parsed_content('device')
 
     autoencoder = config.get_parsed_content('autoencoder')
-    weights_load_path = (
-        override_weights_load_path
-        if override_weights_load_path is not None
-        else config.get_parsed_content('load_autoencoder_path')
-    )
-
+    # weights_load_path = (
+    #     override_weights_load_path
+    #     if override_weights_load_path is not None
+    #     else config.get_parsed_content('load_autoencoder_path')
+    # )
+    weights_load_path = 'brats_mri_class_cond/models/perceptual_try1_autoencoder_epoch_30.ckpt'
     autoencoder.load_state_dict(torch.load(weights_load_path, map_location=device), strict=False)
     return autoencoder
 
