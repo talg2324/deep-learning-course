@@ -195,5 +195,5 @@ if __name__ == "__main__":
                        epoch=e,
                        autoencoder=autoencoder,
                        losses_dict=losses)
-            log_ims(autoencoder, f'epoch_{e}', first(val_loader), max_ims=4)
+            log_ims(autoencoder, os.path.join(im_log, f'epoch_{e}'), first(val_loader), max_ims=4)
         torch.cuda.empty_cache()
