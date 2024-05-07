@@ -57,9 +57,12 @@ def compute_kl_loss(z_mu, z_sigma):
     return torch.sum(kl_loss) / kl_loss.shape[0]
 
 
+# TODO - move this global somewhere?
+kl_weight = 1e-6
+
+
 def naive_train_loop(autoencoder, dataloader, L, optimizer):
     autoencoder.train()
-    kl_weight = 1e-6
     total_loss = 0
     with tqdm(dataloader, desc='  Training loop', total=len(dataloader)) as pbar:
         for batch in pbar:
@@ -67,6 +70,7 @@ def naive_train_loop(autoencoder, dataloader, L, optimizer):
             ims_recon, z_mu, z_sigma = autoencoder(ims)
             l1_loss = L(ims.float(), ims_recon.float())
             kl_loss = compute_kl_loss(z_mu, z_sigma)
+            # TODO - add perceptual term
             loss = l1_loss + kl_weight * kl_loss
             pbar.set_postfix({"loss": loss.item()})
 
@@ -86,8 +90,11 @@ def naive_val_loop(autoencoder, dataloader, L):
     with tqdm(dataloader, desc='  Validation loop', total=len(dataloader)) as pbar:
         for batch in pbar:
             ims = batch['image'].to(device)
-            ims_recon, _, _ = autoencoder(ims)
-            loss = L(ims.float(), ims_recon.float())
+            ims_recon, z_mu, z_sigma = autoencoder(ims)
+            l1_loss = L(ims.float(), ims_recon.float())
+            kl_loss = compute_kl_loss(z_mu, z_sigma)
+            # TODO - add perceptual term
+            loss = kl_weight * kl_loss + l1_loss
             pbar.set_postfix({"loss": loss.item()})
 
             total_loss += loss.item()
