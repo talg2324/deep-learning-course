@@ -160,7 +160,7 @@ def log_ims(unet, autoencoder, inferer, noise_shape,
                               schedule='scaled_linear_beta', clip_sample=False)
     scheduler.set_timesteps(num_inference_steps=50)
     rows = []
-    sampling_range = classes_list if classes_list else range(4)
+    sampling_range = classes_list if classes_list else range(max_ims)
     for n in sampling_range:
         noise = torch.randn(noise_shape, device=device)
         # TODO - better pass this as argument and not use as global
@@ -190,7 +190,44 @@ def log_ims(unet, autoencoder, inferer, noise_shape,
         rows.append(row)
     log_im = utils.rescale_outputs(torch.vstack(rows))
     log_im = Image.fromarray(log_im)
-    log_im.save(im_tag + '_sample.png')
+    log_im.save(im_tag + '_denoising.png')
+
+    rows = []
+    sampling_range = classes_list if classes_list else range(max_ims)
+    for n in sampling_range:
+        images = []
+        for k in range(max_ims):
+
+            noise = torch.randn(noise_shape, device=device)
+            # TODO - better pass this as argument and not use as global
+            if use_context:
+                if not use_conditioning:
+                    label = None
+                else:
+                    label = torch.full((1, 1, 1), n, dtype=torch.float32, device=device)
+                im = inferer.sample(input_noise=noise,
+                                        save_intermediates=False,
+                                        intermediate_steps=200,
+                                        autoencoder_model=autoencoder,
+                                        diffusion_model=unet,
+                                        scheduler=scheduler,
+                                        conditioning=label)
+            else:
+                label = torch.full((1,), n, dtype=torch.long, device=device)
+                im = inferer.sample(input_noise=noise,
+                                        save_intermediates=False,
+                                        intermediate_steps=200,
+                                        autoencoder_model=autoencoder,
+                                        diffusion_model=unet,
+                                        scheduler=scheduler,
+                                        class_labels=label)   
+            images.append(im)
+        row = torch.cat(images, dim=-1).squeeze() # H x (4xW)
+        rows.append(row)
+    log_im = utils.rescale_outputs(torch.vstack(rows))
+    log_im = Image.fromarray(log_im)
+    log_im.save(im_tag + '_sampling.png')
+
 
 
 if __name__ == "__main__":
