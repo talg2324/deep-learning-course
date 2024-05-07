@@ -203,6 +203,8 @@ if __name__ == "__main__":
         os.mkdir(im_log)
 
     print(f"Training dir: {logdir}")
+    # save training args
+    torch.save(os.path.join(logdir, 'training_args'), args)
 
     train_loader = DataLoader(CTSubset('../data/ct-rsna/train/', 'train_set_dropped_nans.csv',
                                         size=256, flip_prob=0.5, subset_len=64),
