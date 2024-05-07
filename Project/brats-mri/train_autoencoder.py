@@ -11,6 +11,8 @@ from PIL import Image
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from generative.losses import PerceptualLoss
+
 
 from pretrained import load_autoencoder
 import utils
@@ -50,6 +52,16 @@ def log_ims(autoencoder, im_tag, data_sample, max_ims=4):
     log_im.save(im_tag + '_encoder.png')
 
 
+def perceptual_loss(perceptual_loss_model_weights_path = None):
+    loss_p = PerceptualLoss(spatial_dims=2,
+                        network_type="resnet50",
+                        pretrained=True,
+                        pretrained_path=perceptual_loss_model_weights_path,
+                        pretrained_state_dict_key="state_dict"
+                       )
+    return loss_p
+
+
 def compute_kl_loss(z_mu, z_sigma):
     kl_loss = 0.5 * torch.sum(
         z_mu.pow(2) + z_sigma.pow(2) - torch.log(z_sigma.pow(2)) - 1, dim=list(range(1, len(z_sigma.shape)))
@@ -61,8 +73,10 @@ def compute_kl_loss(z_mu, z_sigma):
 kl_weight = 1e-6
 
 
-def naive_train_loop(autoencoder, dataloader, L, optimizer):
+def naive_train_loop(autoencoder, dataloader, L, optimizer, use_perceptual_loss: bool = False):
     autoencoder.train()
+    if use_perceptual_loss:
+        loss_perceptual = perceptual_loss().to(device)
     total_loss = 0
     with tqdm(dataloader, desc='  Training loop', total=len(dataloader)) as pbar:
         for batch in pbar:
@@ -70,8 +84,10 @@ def naive_train_loop(autoencoder, dataloader, L, optimizer):
             ims_recon, z_mu, z_sigma = autoencoder(ims)
             l1_loss = L(ims.float(), ims_recon.float())
             kl_loss = compute_kl_loss(z_mu, z_sigma)
-            # TODO - add perceptual term
             loss = l1_loss + kl_weight * kl_loss
+            if use_perceptual_loss:
+                loss += loss_perceptual(ims_recon.float(), ims.float())
+
             pbar.set_postfix({"loss": loss.item()})
 
             loss.backward()
@@ -84,8 +100,10 @@ def naive_train_loop(autoencoder, dataloader, L, optimizer):
 
 
 @torch.no_grad
-def naive_val_loop(autoencoder, dataloader, L):
+def naive_val_loop(autoencoder, dataloader, L, use_perceptual_loss: bool = False):
     autoencoder.eval()
+    if use_perceptual_loss:
+        loss_perceptual = perceptual_loss().to(device)
     total_loss = 0
     with tqdm(dataloader, desc='  Validation loop', total=len(dataloader)) as pbar:
         for batch in pbar:
@@ -93,8 +111,9 @@ def naive_val_loop(autoencoder, dataloader, L):
             ims_recon, z_mu, z_sigma = autoencoder(ims)
             l1_loss = L(ims.float(), ims_recon.float())
             kl_loss = compute_kl_loss(z_mu, z_sigma)
-            # TODO - add perceptual term
             loss = kl_weight * kl_loss + l1_loss
+            if use_perceptual_loss:
+                loss += loss_perceptual(ims_recon.float(), ims.float())
             pbar.set_postfix({"loss": loss.item()})
 
             total_loss += loss.item()
@@ -127,6 +146,8 @@ def autoencoder_arg_parser():
 
     parser.add_argument('--lr', type=float, default=1e-5)
     parser.add_argument('--batch_size', type=int, default=4)
+    parser.add_argument('--use_perceptual_loss', type=bool, default=False,
+                        help='use perceptual loss term in Autoencoder training')
     return parser
 
 
@@ -183,7 +204,7 @@ if __name__ == "__main__":
     log_ims(autoencoder, 'pretraining', first(val_loader), max_ims=4)
     for e in range(1, args.num_epochs + 1):
         print(f'Epoch #[{e}/{args.num_epochs}]:')
-        train_loss = naive_train_loop(autoencoder, train_loader, L, optimizer)
+        train_loss = naive_train_loop(autoencoder, train_loader, L, optimizer, args.use_perceptual_loss)
         losses['train'].append((e, train_loss))
         lr_scheduler.step()
         if e % val_every_n_epochs == 0:
