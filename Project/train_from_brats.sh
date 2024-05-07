@@ -13,6 +13,7 @@ python main.py \
   --num_epochs 1500 \
   --val_every_n_epochs 200 \
   --name ${name} \
-  --conditioning none \
+  --conditioning class \
   --batch_size 32 \
-  --lr 0.0001
+  --lr 0.0001 \
+  --config inference_new.json
