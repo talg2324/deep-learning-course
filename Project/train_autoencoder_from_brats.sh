@@ -9,7 +9,7 @@ read name
 echo "Training ${name}..."
 cd brats-mri
 LD_LIBRARY_PATH=/opt/conda/lib \
-python main.py \
+python train_autoencoder.py \
   --num_epochs 30 \
   --val_every_n_epochs 3 \
   --name ${name} \
