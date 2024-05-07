@@ -130,6 +130,11 @@ if __name__ == "__main__":
     print("Random seed: ", args.seed)
     print("Number of epochs: ", args.num_epochs)
     print(f"Performing validation every {args.val_every_n_epochs} epochs")
+    if args.save_ckpt_every_n:
+        print(f"saving checkpoints each {args.save_ckpt_every_n} epochs")
+    else:
+        args.save_ckpt_every_n = args.num_epochs
+        print(f"saving only on last epoch")
 
     monai.utils.set_determinism(seed=args.seed)
     utils.download_weights_if_not_already(BUNDLE)
