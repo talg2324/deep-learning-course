@@ -14,4 +14,5 @@ python train_autoencoder.py \
   --val_every_n_epochs 3 \
   --name ${name} \
   --batch_size 4\
-  --lr 0.0001
+  --lr 0.0001 \
+  --use_perceptual_loss True
