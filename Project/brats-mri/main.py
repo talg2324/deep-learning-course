@@ -7,6 +7,7 @@ from tqdm import tqdm
 from monai.utils import first
 from generative.inferers import LatentDiffusionInferer
 from generative.networks.schedulers import DDIMScheduler
+import numpy as np
 
 from torch.utils.data import DataLoader
 from torch.optim import Adam
@@ -137,7 +138,7 @@ def val_loop(unet, autoencoder, inferer, dl, L, use_context, noise_shape):
 
 @torch.no_grad()
 def log_ims(unet, autoencoder, inferer, noise_shape,
-            im_tag, data_sample, n_classes=6, max_ims=4):
+            im_tag, data_sample, classes_list=None, max_ims=4):
 
     unet.eval()
     autoencoder.eval()
@@ -159,7 +160,8 @@ def log_ims(unet, autoencoder, inferer, noise_shape,
                               schedule='scaled_linear_beta', clip_sample=False)
     scheduler.set_timesteps(num_inference_steps=50)
     rows = []
-    for n in range(4):
+    sampling_range = classes_list if classes_list else range(4)
+    for n in sampling_range:
         noise = torch.randn(noise_shape, device=device)
         # TODO - better pass this as argument and not use as global
         if use_context:
@@ -205,7 +207,6 @@ if __name__ == "__main__":
     train_loader = DataLoader(CTSubset('../data/ct-rsna/train/', 'train_set_dropped_nans.csv',
                                         size=256, flip_prob=0.5, subset_len=64),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
-
     val_loader = DataLoader(CTSubset('../data/ct-rsna/validation/', 'validation_set_dropped_nans.csv',
                                         size=256, flip_prob=0., subset_len=64),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
@@ -251,7 +252,7 @@ if __name__ == "__main__":
 
     im_tag = os.path.join(im_log, '000')
     log_ims(unet, autoencoder, inferer, sample_noise_shape,
-            im_tag, first(val_loader), len(train_loader.dataset.class_names))
+            im_tag, first(val_loader), classes_list=np.unique(train_loader.dataset.labels).tolist())
 
     for e in range(1, args.num_epochs+1):
         print(f'Epoch #[{e}/{args.num_epochs}]:')
@@ -270,7 +271,7 @@ if __name__ == "__main__":
             losses['validation'].append((e, val_loss))
             im_tag = os.path.join(im_log, f'{e}'.zfill(3))
             log_ims(unet, autoencoder, inferer, sample_noise_shape,
-                   im_tag, first(val_loader), len(train_loader.dataset.class_names))
+                   im_tag, first(val_loader), classes_list=np.unique(train_loader.dataset.labels).tolist())
 
         if e % args.save_ckpt_every_n == 0:
             save_epoch(logdir=logdir,

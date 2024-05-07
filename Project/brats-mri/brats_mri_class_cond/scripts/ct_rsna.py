@@ -68,6 +68,7 @@ class CTSubset(CTDataset):
         super().__init__(data_dir, labels_file, size, flip_prob)
         self.subset_len = subset_len
         self.class_distribution(labels_file, self.labels[:subset_len])
+        self.labels = self.labels[:subset_len]
 
     def __len__(self):
         return self.subset_len
