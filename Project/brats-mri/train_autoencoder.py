@@ -197,7 +197,7 @@ if __name__ == "__main__":
     }
 
     # log pre-train
-    log_ims(autoencoder, 'pretraining', first(val_loader), max_ims=4)
+    log_ims(autoencoder, os.path.join(im_log, 'pretraining'), first(val_loader), max_ims=4)
     for e in range(1, args.num_epochs + 1):
         print(f'Epoch #[{e}/{args.num_epochs}]:')
         train_loss = naive_train_loop(autoencoder, train_loader, L, optimizer, args.use_perceptual_loss)
@@ -213,4 +213,4 @@ if __name__ == "__main__":
                        autoencoder=autoencoder,
                        losses_dict=losses)
             log_ims(autoencoder, os.path.join(im_log, f'epoch_{e}'), first(val_loader), max_ims=4)
-        torch.cuda.empty_cache()
+    torch.cuda.empty_cache()
