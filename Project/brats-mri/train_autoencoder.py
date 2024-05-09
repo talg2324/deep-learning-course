@@ -54,7 +54,7 @@ def log_ims(autoencoder, im_tag, data_sample, max_ims=4):
 
 def perceptual_loss(perceptual_loss_model_weights_path = None):
     loss_p = PerceptualLoss(spatial_dims=2,
-                        network_type="resnet50",
+                        network_type="radimagenet_resnet50",
                         pretrained=True,
                         pretrained_path=perceptual_loss_model_weights_path,
                         pretrained_state_dict_key="state_dict"
@@ -178,18 +178,14 @@ if __name__ == "__main__":
     torch.save(args, os.path.join(logdir, 'training_args'))
 
     train_loader = DataLoader(CTSubset('../data/ct-rsna/train/', 'train_set_dropped_nans.csv',
-                                       size=256, flip_prob=0.5, subset_len=128),
+                                       size=256, flip_prob=0.5, subset_len=1024),
                               batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     val_loader = DataLoader(CTSubset('../data/ct-rsna/validation/', 'validation_set_dropped_nans.csv',
-                                     size=256, flip_prob=0., subset_len=32),
+                                     size=256, flip_prob=0., subset_len=256),
                             batch_size=args.batch_size, shuffle=True, drop_last=True)
     # load autoencoder
     autoencoder = load_autoencoder(bundle_target=BUNDLE)
-
-    num_epochs = 20
-    val_every_n_epochs = 2
-    lr = 1e-5
 
     L = torch.nn.L1Loss()
     optimizer = Adam(list(autoencoder.parameters()), lr=args.lr)
@@ -207,7 +203,7 @@ if __name__ == "__main__":
         train_loss = naive_train_loop(autoencoder, train_loader, L, optimizer, args.use_perceptual_loss)
         losses['train'].append((e, train_loss))
         lr_scheduler.step()
-        if e % val_every_n_epochs == 0:
+        if e % args.val_every_n_epochs == 0:
             val_loss = naive_val_loop(autoencoder, val_loader, L)
             losses['validation'].append((e, val_loss))
 
