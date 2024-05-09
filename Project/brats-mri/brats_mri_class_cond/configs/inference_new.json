@@ -70,7 +70,7 @@
         ],
         "num_res_blocks": 2
     },
-    "load_autoencoder_path": "../data/outputs/perceptual_try1/autoencoder_epoch_30.ckpt",
+    "load_autoencoder_path": "../data/outputs/radimagenet_perceptual_1024_30epochs/autoencoder_epoch_30.ckpt",
     "load_autoencoder": "$@autoencoder_def.load_state_dict(torch.load(@load_autoencoder_path))",
     "autoencoder": "$@autoencoder_def.to(@device)",
     "load_diffusion_path": "$@model_dir + '/model.pt'",
