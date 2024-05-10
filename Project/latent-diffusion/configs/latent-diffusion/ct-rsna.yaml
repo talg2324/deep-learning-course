@@ -80,7 +80,7 @@ data:
   target: main.DataModuleFromConfig
   params:
     batch_size: 16
-    num_workers: 2
+    num_workers: 8
     wrap: false
     train:
       target: ldm.data.ct_rsna.CTSubset
@@ -97,7 +97,7 @@ data:
         labels_file: "validation_set_dropped_nans.csv"
         size: 256
         flip_prob: 0
-        subset_len: 128
+        subset_len: 64
 
 lightning:
   modelcheckpoint:
