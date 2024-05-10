@@ -89,7 +89,7 @@ data:
         labels_file: "train_set_dropped_nans.csv"
         size: 256
         flip_prob: 0.5
-        subset_len: 2048
+        subset_len: 512
     validation:
       target: ldm.data.ct_rsna.CTSubset
       params:
