@@ -103,7 +103,7 @@ lightning:
   modelcheckpoint:
     target: pytorch_lightning.callbacks.ModelCheckpoint
     params:
-      every_n_epochs: 1
+      every_n_epochs: 5
       save_top_k: -1
       save_weights_only: true
 
