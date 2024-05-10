@@ -15,4 +15,5 @@ python train_autoencoder.py \
   --name ${name} \
   --batch_size 4\
   --lr 0.0001 \
-  --use_perceptual_loss True
+  --use_perceptual_loss True \
+  --save_ckpt_every_n 5
