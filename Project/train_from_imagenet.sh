@@ -10,7 +10,7 @@ echo "Training ${name}..."
 cd latent-diffusion
 LD_LIBRARY_PATH=/opt/conda/lib \
 CUDA_VISIBLE_DEVICES=0 \
-python main.py \
+python main_shortened.py \
   --base configs/latent-diffusion/ct-rsna.yaml \
   -t \
   --gpus 0, \
