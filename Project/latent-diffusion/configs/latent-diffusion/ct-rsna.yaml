@@ -89,7 +89,7 @@ data:
         labels_file: "train_set_dropped_nans.csv"
         size: 256
         flip_prob: 0.5
-        subset_len: 1024
+        subset_len: 2048
     validation:
       target: ldm.data.ct_rsna.CTSubset
       params:
@@ -111,7 +111,7 @@ lightning:
     image_logger:
       target: main.ImageLogger
       params:
-        batch_frequency: 640  # Every 10 epochs
+        batch_frequency: 5000  # This is useless
         log_on_batch_idx: false
         increase_log_steps: false
         max_images: 2
