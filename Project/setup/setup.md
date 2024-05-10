@@ -24,7 +24,8 @@ the below should allow you to pull a repo using SSH clone, and then push updates
 4. conda env create -f env.yaml
 5. conda activate ldm
 6. python -m pip install -e ./taming-transformers
-7. python -m pip install git+https://github.com/openai/CLIP.git
+7. pip install packaging==21.3
+8. python -m pip install git+https://github.com/openai/CLIP.git
 
 ## Setup jupyter
 8. python -m pip install notebook
