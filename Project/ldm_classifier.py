@@ -104,7 +104,7 @@ class DiffusionClassifierInterface:
         """
         # TODO - add here verifications to the Dataset object to make sure it has the required attributes
         if classes is None:
-            classes = np.unique(dataset.labels).tolist
+            classes = np.unique(dataset.labels).tolist()
 
         assert batch_size == 1, "classifier batch size refers to a batch in the t_timesteps dimension. but it can only work on one sample at each call. dataloader batch must be set to 1"
         loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
