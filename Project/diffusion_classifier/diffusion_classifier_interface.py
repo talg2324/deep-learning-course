@@ -106,6 +106,7 @@ class DiffusionClassifierInterface:
         l1_labels_pred = []
         true_labels = []
         for batch in tqdm.auto.tqdm(loader, desc="dataset samples"):
+            batch.to(self.device)
             c_hypotheses = self.get_class_hypotheses_for_batch(batch_size=batch_size, classes=classes)
             l2_label_pred, l1_label_pred = self.classify_batch(batch, c_hypotheses, n_trials, t_sampling_stride)
 
