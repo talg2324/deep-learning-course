@@ -62,38 +62,43 @@ if __name__ == "__main__":
 
   val_dir = './data/ct-rsna/validation'
   output_dir = './data/outputs'
-  training_name = '2024-05-10T17-04-36_imagenet-1024'
+  
   subset_len = 8
-
-
   ds = CTSubset(data_dir=val_dir, labels_file='validation_set_dropped_nans.csv',
                 size=256, flip_prob=0., subset_len=subset_len)
-    
-    
-  clf_dir = os.path.join(output_dir, training_name, 'classification')
-  if not os.path.exists(clf_dir):
-      os.makedirs(clf_dir)
 
-  clf_res_per_epoch = {}
-  training_ckpt_files = get_training_ckpt_files(output_dir, training_name)
-  cfg_file = get_training_cfg_file(output_dir, training_name)
+  trained_models = [
+    '2024-05-10T22-04-53_imagenet-256',
+    '2024-05-10T21-25-21_imagenet-512',
+    '2024-05-10T17-04-36_imagenet-1024',
+    '2024-05-10T19-48-18_imagenet-2048'
+  ]
 
-  for ckpt_file in training_ckpt_files:
-      epoch_num = strip_epoch_num_from_ckpt(ckpt_file)
-      model = get_model(cfg_file, ckpt_file)
-       
-      clf = LdmClassifier(model)
-      l2_pred, l1_pred, y = clf.classify_dataset(dataset=ds,
-                                                t_sampling_stride=50)
-       
-      clf_res_per_epoch[epoch_num] = {
-                                      'y': y,
-                                      'l1_pred': l1_pred,
-                                      'l2_pred': l2_pred
-                                      }
+  for training_name in trained_models:
+    clf_dir = os.path.join(output_dir, training_name, 'classification')
+    if not os.path.exists(clf_dir):
+        os.makedirs(clf_dir)
 
-      with open(os.path.join(clf_dir, f'predictions'), 'wb') as f:
-          pickle.dump(clf_res_per_epoch, f)
-      
-      del model
-      del clf
+    clf_res_per_epoch = {}
+    training_ckpt_files = get_training_ckpt_files(output_dir, training_name)
+    cfg_file = get_training_cfg_file(output_dir, training_name)
+
+    for ckpt_file in training_ckpt_files:
+        epoch_num = strip_epoch_num_from_ckpt(ckpt_file)
+        model = get_model(cfg_file, ckpt_file)
+        
+        clf = LdmClassifier(model)
+        l2_pred, l1_pred, y = clf.classify_dataset(dataset=ds,
+                                                  t_sampling_stride=50)
+        
+        clf_res_per_epoch[epoch_num] = {
+                                        'y': y,
+                                        'l1_pred': l1_pred,
+                                        'l2_pred': l2_pred
+                                        }
+
+        with open(os.path.join(clf_dir, f'predictions'), 'wb') as f:
+            pickle.dump(clf_res_per_epoch, f)
+        
+        del model
+        del clf
