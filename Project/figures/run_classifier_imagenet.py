@@ -5,14 +5,13 @@ import pickle
 import numpy as np
 from omegaconf import OmegaConf
 
-from diffusion_classifier.ldm_classifier_imagenet import LdmClassifier
-
-sys.path.append('.')
-sys.path.append("./latent-diffusion")
+sys.path.append('./')
+sys.path.append('./latent-diffusion')
 sys.path.append('./taming-transformers')
 
 from ldm.util import instantiate_from_config
 from ldm.data.ct_rsna import CTSubset
+from diffusion_classifier.ldm_classifier_imagenet import LdmClassifier
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
