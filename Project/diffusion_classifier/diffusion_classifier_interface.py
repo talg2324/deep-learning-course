@@ -77,6 +77,7 @@ class DiffusionClassifierInterface:
         c_hypotheses = [{'class_label': torch.tensor([c] * batch_size, device=self._device)} for c in classes]
         return c_hypotheses
     
+    @torch.no_grad()
     def classify_dataset(self,
                          dataset: Dataset,
                          batch_size: int = 1,
@@ -116,12 +117,14 @@ class DiffusionClassifierInterface:
                     
             l2_label_pred, l1_label_pred = self.classify_batch(batch, c_hypotheses, n_trials, t_sampling_stride)
 
-            true_labels.extend(batch['class_label'])
+            true_labels.extend(batch['class_label'].cpu())
             l2_labels_pred.append(l2_label_pred)
             l1_labels_pred.append(l1_label_pred)
 
         return l2_labels_pred, l1_labels_pred, true_labels
 
+    
+    @torch.no_grad()
     def classify_batch(self,
                        x0,
                        c_hypotheses,
@@ -144,13 +147,14 @@ class DiffusionClassifierInterface:
                                                                             c=c_hypo,
                                                                             n_trials=n_trials,
                                                                             t_sampling_stride=t_sampling_stride)
-            l2_c_errs.append((l2_mean_err, c_hypo['class_label'].detach().cpu()))
-            l1_c_errs.append((l1_mean_err, c_hypo['class_label'].detach().cpu()))
+            l2_c_errs.append((l2_mean_err.cpu(), c_hypo['class_label'].cpu()))
+            l1_c_errs.append((l1_mean_err.cpu(), c_hypo['class_label'].cpu()))
 
         l2_label_pred = self.extract_prediction_from_errs(l2_c_errs)
         l1_label_pred = self.extract_prediction_from_errs(l1_c_errs)
         return l2_label_pred, l1_label_pred
 
+    @torch.no_grad()
     def eval_class_hypothesis_per_batch(self,
                                         x0,
                                         c,
@@ -173,37 +177,36 @@ class DiffusionClassifierInterface:
 
         for t in range(t_sampling_stride // 2, self.n_train_timesteps, t_sampling_stride):
             ts.extend([t] * n_trials)
-        with torch.inference_mode():
-            idx = 0
-            for _ in tqdm.auto.trange(len(ts) // batch_size + int(len(ts) % batch_size != 0),
-                                      desc="diffusion sampling"):
-                with autocast(enabled=True):
-                    t_input = torch.tensor(ts[idx: idx + batch_size]).to(self.device)
+        idx = 0
+        for _ in tqdm.auto.trange(len(ts) // batch_size + int(len(ts) % batch_size != 0),
+                                  desc="diffusion sampling"):
+            with autocast(enabled=True):
+                t_input = torch.tensor(ts[idx: idx + batch_size]).to(self.device)
 
-                    noise = self.noise[:len(t_input)]
+                noise = self.noise[:len(t_input)]
 
-                    x0 = x0.repeat(len(t_input), 1, 1, 1)
+                x0 = x0.repeat(len(t_input), 1, 1, 1)
 
-                    noise_pred = self.get_noise_prediction(x0, t_input, noise, c)
-                    # noised_latent = self.get_noised_input(latent_, t_input, noise)
-                    #
-                    #
-                    # # prepare conditioning input
-                    # cond_input = self.trim_cond_dict(c, len(t_input))
-                    #
-                    # # get condition embedding
-                    # cond_emb = self.get_conditioning(cond_input)
-                    #
-                    # # get noise prediction from diffusion model
-                    # noise_pred = self.get_diffusion_noise_prediction(noised_latent, t_input, cond_emb)
+                noise_pred = self.get_noise_prediction(x0, t_input, noise, c)
+                # noised_latent = self.get_noised_input(latent_, t_input, noise)
+                #
+                #
+                # # prepare conditioning input
+                # cond_input = self.trim_cond_dict(c, len(t_input))
+                #
+                # # get condition embedding
+                # cond_emb = self.get_conditioning(cond_input)
+                #
+                # # get noise prediction from diffusion model
+                # noise_pred = self.get_diffusion_noise_prediction(noised_latent, t_input, cond_emb)
 
-                    l2_loss = mean_flat((noise - noise_pred) ** 2)
-                    l1_loss = mean_flat(torch.abs(noise - noise_pred))
-                    error = torch.cat([l2_loss.unsqueeze(1),
-                                       l1_loss.unsqueeze(1)], dim=1)
+                l2_loss = mean_flat((noise - noise_pred) ** 2)
+                l1_loss = mean_flat(torch.abs(noise - noise_pred))
+                error = torch.cat([l2_loss.unsqueeze(1),
+                                   l1_loss.unsqueeze(1)], dim=1)
 
-                    pred_errors[idx: idx + len(t_input)] = error.detach().cpu()
-                    idx += len(t_input)
+                pred_errors[idx: idx + len(t_input)] = error.cpu()
+                idx += len(t_input)
         mean_pred_errors = pred_errors.view(self.n_train_timesteps // t_sampling_stride,
                                             n_trials,
                                             *pred_errors.shape[1:]).mean(dim=(0, 1))
@@ -239,8 +242,4 @@ class DiffusionClassifierInterface:
             if y_hat == y_gt:
                 n_correct += 1.
         return 100. * (n_correct / n_samples)
-
-
-
-
 
