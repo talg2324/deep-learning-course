@@ -63,7 +63,7 @@ if __name__ == "__main__":
   val_dir = './data/ct-rsna/validation'
   output_dir = './data/outputs'
   
-  subset_len = 16
+  subset_len = 128
   ds = CTSubset(data_dir=val_dir, labels_file='validation_set_dropped_nans.csv',
                 size=256, flip_prob=0., subset_len=subset_len)
 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         
         clf = LdmClassifier(model)
         l2_pred, l1_pred, y = clf.classify_dataset(dataset=ds,
-                                                   n_trials=5,
+                                                   n_trials=1,
                                                    t_sampling_stride=50)
         
         clf_res_per_epoch[epoch_num] = {
