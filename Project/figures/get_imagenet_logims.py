@@ -1,6 +1,11 @@
+import os
 import torch
+import numpy as np
+from PIL import Image
+from einops import rearrange
 from omegaconf import OmegaConf
-from matplotlib import pyplot as plt
+from torchvision.utils import make_grid
+
 
 import sys
 sys.path.append("./latent-diffusion/")
@@ -51,38 +56,60 @@ def get_training_cfg_file(output_dir, training_name):
   return os.path.join(cfg_dir, model_cfg_files[0])
 
 if __name__ == "__main__":
+    output_dir = './data/outputs'
+    training_name = '2024-05-10T17-04-36_imagenet-1024'
+    training_ckpt_files = get_training_ckpt_files(output_dir, training_name)
+    cfg_file = get_training_cfg_file(output_dir, training_name)
 
-    model = get_model()
+    # TODO - Loop here
+    ckpt_file = training_ckpt_files[0]
+    epoch_num = strip_epoch_num_from_ckpt(ckpt_file)
+    model = get_model(cfg_file, ckpt_file)
     sampler = DDIMSampler(model)
 
-    class_label = 25
-    n_samples = 1
+    n_classes = 6
+    n_samples = 4
 
     ddim_steps = 20
     ddim_eta = 0.0
     scale = 3.0   # for unconditional guidance
 
+    all_samples = []
+
     with torch.no_grad():
         with model.ema_scope():
-            x0 = torch.tensor(n_samples*[1000], device=device)
-            xc = torch.tensor(n_samples*[class_label], device=device)
+            uc = model.get_learned_conditioning(
+            {model.cond_stage_key: torch.tensor(n_samples*[1000]).to(device)}
+            )
+        
+            for class_label in range(n_classes):
+                xc = torch.tensor(n_samples*[class_label])
+                c = model.get_learned_conditioning({model.cond_stage_key: xc.to(model.device)})
+                
+                samples_ddim, _ = sampler.sample(S=ddim_steps,
+                                                conditioning=c,
+                                                batch_size=n_samples,
+                                                shape=[3, 64, 64],
+                                                verbose=False,
+                                                unconditional_guidance_scale=scale,
+                                                unconditional_conditioning=uc, 
+                                                eta=ddim_eta)
 
-            uc = model.get_learned_conditioning({model.cond_stage_key: x0})
-            c = model.get_learned_conditioning({model.cond_stage_key: xc})
+                x_samples_ddim = model.decode_first_stage(samples_ddim)
+                x_samples_ddim = torch.clamp((x_samples_ddim+1.0)/2.0, 
+                                            min=0.0, max=1.0)
+                all_samples.append(x_samples_ddim)
+                
+                x_samples_ddim = model.decode_first_stage(samples_ddim)
+                x_samples_ddim = torch.clamp((x_samples_ddim+1.0)/2.0, 
+                                            min=0.0, max=1.0)
+            
+    # display as grid
+    grid = torch.stack(all_samples, 0)
+    grid = rearrange(grid, 'n b c h w -> (n b) c h w')
+    grid = make_grid(grid, nrow=n_samples)
 
-            samples_ddim, _ = sampler.sample(S=ddim_steps,
-                                             conditioning=c,
-                                             batch_size=n_samples,
-                                             shape=[3, 64, 64],
-                                             verbose=False,
-                                             unconditional_guidance_scale=scale,
-                                             unconditional_conditioning=uc, 
-                                             eta=ddim_eta)
-            
-            
-            x_samples_ddim = model.decode_first_stage(samples_ddim)
-            x_samples_ddim = torch.clamp((x_samples_ddim+1.0)/2.0, 
-                                         min=0.0, max=1.0)
-            
-            plt.imshow(x_samples_ddim.squeeze().permute(1,2,0).cpu())
-            plt.show()
+    # to image
+    grid = 255. * rearrange(grid, 'c h w -> h w c').T.cpu().numpy()
+    log_im = Image.fromarray(grid.astype(np.uint8))
+    log_im.save(os.path.join(output_dir, training_name, f'images/{epoch_num}.png'))
