@@ -63,7 +63,7 @@ if __name__ == "__main__":
   val_dir = './data/ct-rsna/validation'
   output_dir = './data/outputs'
   
-  subset_len = 8
+  subset_len = 16
   ds = CTSubset(data_dir=val_dir, labels_file='validation_set_dropped_nans.csv',
                 size=256, flip_prob=0., subset_len=subset_len)
 
