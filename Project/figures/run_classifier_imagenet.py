@@ -56,6 +56,16 @@ def get_training_cfg_file(output_dir, training_name):
   return os.path.join(cfg_dir, model_cfg_files[0])
 
 
+def get_already_calculated(clf_dir):
+    predictions_path = os.path.join(clf_dir, 'predictions')
+    if os.path.exists(predictions_path):
+        with open(predictions_path, 'rb') as f:
+            pred_dict = pickle.load(f)
+        n_already_calculated = len(pred_dict.keys())
+    else:
+        n_already_calculated = 0
+    return n_already_calculated
+
 if __name__ == "__main__":
   np.random.seed(7)
   torch.manual_seed(7)
@@ -83,7 +93,10 @@ if __name__ == "__main__":
     training_ckpt_files = get_training_ckpt_files(output_dir, training_name)
     cfg_file = get_training_cfg_file(output_dir, training_name)
 
-    for ckpt_file in training_ckpt_files:
+    n_already_calculated = get_already_calculated(clf_dir)
+    for i in range(n_already_calculated, len(training_ckpt_files)):
+        ckpt_file = training_ckpt_files[i]
+
         epoch_num = strip_epoch_num_from_ckpt(ckpt_file)
         model = get_model(cfg_file, ckpt_file)
         
