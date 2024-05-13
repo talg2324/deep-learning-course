@@ -178,33 +178,34 @@ class DiffusionClassifierInterface:
         for t in range(t_sampling_stride // 2, self.n_train_timesteps, t_sampling_stride):
             ts.extend([t] * n_trials)
         idx = 0
-        with autocast(enabled=True):
-            t_input = torch.tensor(ts[idx: idx + batch_size]).to(self.device)
-
-            noise = self.noise[idx % len(self.noise):idx % len(self.noise) + 1]
-
-            x0 = x0.repeat(len(t_input), 1, 1, 1)
-
-            noise_pred = self.get_noise_prediction(x0, t_input, noise, c)
-            # noised_latent = self.get_noised_input(latent_, t_input, noise)
-            #
-            #
-            # # prepare conditioning input
-            # cond_input = self.trim_cond_dict(c, len(t_input))
-            #
-            # # get condition embedding
-            # cond_emb = self.get_conditioning(cond_input)
-            #
-            # # get noise prediction from diffusion model
-            # noise_pred = self.get_diffusion_noise_prediction(noised_latent, t_input, cond_emb)
-
-            l2_loss = mean_flat((noise - noise_pred) ** 2)
-            l1_loss = mean_flat(torch.abs(noise - noise_pred))
-            error = torch.cat([l2_loss.unsqueeze(1),
-                               l1_loss.unsqueeze(1)], dim=1)
-
-            pred_errors[idx: idx + len(t_input)] = error.cpu()
-            idx += len(t_input)
+        for _ in range(len(ts) // batch_size + int(len(ts) % batch_size != 0)):
+            with autocast(enabled=True):
+                t_input = torch.tensor(ts[idx: idx + batch_size]).to(self.device)
+    
+                noise = self.noise[idx % len(self.noise):idx % len(self.noise) + 1]
+    
+                x0 = x0.repeat(len(t_input), 1, 1, 1)
+    
+                noise_pred = self.get_noise_prediction(x0, t_input, noise, c)
+                # noised_latent = self.get_noised_input(latent_, t_input, noise)
+                #
+                #
+                # # prepare conditioning input
+                # cond_input = self.trim_cond_dict(c, len(t_input))
+                #
+                # # get condition embedding
+                # cond_emb = self.get_conditioning(cond_input)
+                #
+                # # get noise prediction from diffusion model
+                # noise_pred = self.get_diffusion_noise_prediction(noised_latent, t_input, cond_emb)
+    
+                l2_loss = mean_flat((noise - noise_pred) ** 2)
+                l1_loss = mean_flat(torch.abs(noise - noise_pred))
+                error = torch.cat([l2_loss.unsqueeze(1),
+                                   l1_loss.unsqueeze(1)], dim=1)
+    
+                pred_errors[idx: idx + len(t_input)] = error.cpu()
+                idx += len(t_input)
         mean_pred_errors = pred_errors.view(self.n_train_timesteps // t_sampling_stride,
                                             n_trials,
                                             *pred_errors.shape[1:]).mean(dim=(0, 1))
