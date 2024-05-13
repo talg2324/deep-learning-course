@@ -87,6 +87,7 @@ if __name__ == "__main__":
   ]
 
   for training_name in trained_models:
+    print(f"Performing Classification for training dir: {training_name}")
     clf_dir = os.path.join(output_dir, training_name, 'classification')
     if not os.path.exists(clf_dir):
         os.makedirs(clf_dir)
