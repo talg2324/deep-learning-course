@@ -20,16 +20,15 @@ def load_model_from_config(config, ckpt):
     print(f"Loading model from {ckpt}")
     pl_sd = torch.load(ckpt, weights_only=False, map_location=torch.device('cpu'))
     sd = pl_sd["state_dict"]
-    torch.save(sd, './tmp_sd')
     model = instantiate_from_config(config.model)
-    m, u = model.load_state_dict(torch.load('./tmp_sd', map_location=device), strict=False)
+    m, u = model.load_state_dict(sd, strict=False)
     model.eval()
     return model.to(device), sd, pl_sd
 
 
 def get_model(model_config_path, model_ckpt_path):
     config = OmegaConf.load(model_config_path)
-    model, sd, pl_sd = load_model_from_config(config, model_ckpt_path)
+    model, _, _ = load_model_from_config(config, model_ckpt_path)
     return model
 
 
@@ -56,8 +55,8 @@ def get_training_cfg_file(output_dir, training_name):
   return os.path.join(cfg_dir, model_cfg_files[0])
 
 
-def get_already_calculated(clf_dir):
-    predictions_path = os.path.join(clf_dir, 'predictions')
+def get_already_calculated(clf_dir, predictions_file_name):
+    predictions_path = os.path.join(clf_dir, predictions_file_name)
     if os.path.exists(predictions_path):
         with open(predictions_path, 'rb') as f:
             pred_dict = pickle.load(f)
@@ -65,6 +64,7 @@ def get_already_calculated(clf_dir):
     else:
         n_already_calculated = 0
     return n_already_calculated
+
 
 if __name__ == "__main__":
   np.random.seed(7)
@@ -74,6 +74,8 @@ if __name__ == "__main__":
   output_dir = './data/outputs'
   
   subset_len = 128
+  predictions_file_name = f"predictions_{subset_len}_samples"
+
   ds = CTSubset(data_dir=val_dir, labels_file='validation_set_dropped_nans.csv',
                 size=256, flip_prob=0., subset_len=subset_len)
 
@@ -93,7 +95,9 @@ if __name__ == "__main__":
     training_ckpt_files = get_training_ckpt_files(output_dir, training_name)
     cfg_file = get_training_cfg_file(output_dir, training_name)
 
-    n_already_calculated = get_already_calculated(clf_dir)
+    n_already_calculated = get_already_calculated(clf_dir, predictions_file_name)
+    if n_already_calculated == len(training_ckpt_files):
+        print(f"training dir: {training_name} already classified for dataset of size {subset_len}, to rerun, make sure you delete previous results!")
     for i in range(n_already_calculated, len(training_ckpt_files)):
         ckpt_file = training_ckpt_files[i]
 
@@ -111,7 +115,7 @@ if __name__ == "__main__":
                                         'l2_pred': l2_pred
                                         }
 
-        with open(os.path.join(clf_dir, f'predictions'), 'wb') as f:
+        with open(os.path.join(clf_dir, f'predictions_{subset_len}_samples'), 'wb') as f:
             pickle.dump(clf_res_per_epoch, f)
         
         del model
