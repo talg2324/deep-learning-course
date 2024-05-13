@@ -183,7 +183,7 @@ class DiffusionClassifierInterface:
             with autocast(enabled=True):
                 t_input = torch.tensor(ts[idx: idx + batch_size]).to(self.device)
 
-                noise = self.noise[:len(t_input)]
+                noise = self.noise[idx % len(self.noise):idx % len(self.noise) + 1]
 
                 x0 = x0.repeat(len(t_input), 1, 1, 1)
 
