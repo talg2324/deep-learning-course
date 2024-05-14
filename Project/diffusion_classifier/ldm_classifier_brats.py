@@ -17,15 +17,16 @@ class MonaiLdmClassifier(DiffusionClassifierInterface):
                  autoencoder: AutoencoderKL,
                  unet: DiffusionModelUNet,
                  inferer,
+                 device,
                  n_noise_samples: int = 1024,
                  random_seed: int = 42,
-                 input_dims: Tuple[int, int, int] = (1, 256, 256),
+                 input_dims: Tuple[int, int, int] = (1, 64, 64),
                  ):
         self._input_dims = input_dims
         self._inferer = inferer
         self._unet = unet
         self._autoencoder = autoencoder
-        super().__init__(device=unet.device, n_noise_samples=n_noise_samples, random_seed=random_seed)
+        super().__init__(device=device, n_noise_samples=n_noise_samples, random_seed=random_seed)
 
     @property
     def unet(self):
@@ -59,13 +60,14 @@ class MonaiLdmClassifier(DiffusionClassifierInterface):
         pass
 
     def get_noise_prediction(self, x0, t, noise, c):
+        c_repeat = c['class_label'].repeat(len(t))
         return self.inferer(inputs=x0,
                             autoencoder_model=self.autoencoder,
                             diffusion_model=self.unet,
                             noise=noise,
                             timesteps=t,
-                            condition=c.view(-1, 1, 1).to(dtype=torch.float32))
-
+                            condition=c_repeat.view(-1, 1, 1).to(dtype=torch.float32))
+                            
     def get_latent_batch(self, batch):
         """
         prepares input for the latent diffusion model.
@@ -79,4 +81,21 @@ class MonaiLdmClassifier(DiffusionClassifierInterface):
         """
         z_mu, z_sigma = self._autoencoder.encode(batch['image'])
         return z_mu
+    
+    def classify_batch(self,
+                       x0,
+                       c_hypotheses,
+                       n_trials: int = 1,
+                       t_sampling_stride: int = 5):
+        """
+        classify a single batch
+        :param x0: diffusion input
+        :param c_hypotheses: conditioning hypothesis input
+        :param n_trials: number of trials to do for each sample. TODO - need to revisit how this is different than the batch...
+        :param t_sampling_stride: sampling rate of the diffusion time steps
+
+        :returns : torch.Tensor(L2 predicted label), torch.Tensor(L1 predicted label)
+        """
+        x0 = x0['image']
+        return super(MonaiLdmClassifier, self).classify_batch(x0, c_hypotheses, n_trials, t_sampling_stride)
 
