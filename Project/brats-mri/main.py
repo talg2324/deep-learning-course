@@ -244,7 +244,7 @@ if __name__ == "__main__":
     torch.save(args, os.path.join(logdir, 'training_args'))
 
     train_loader = DataLoader(CTSubset('../data/ct-rsna/train/', 'train_set_dropped_nans.csv',
-                                        size=256, flip_prob=0.5, subset_len=1024),
+                                        size=256, flip_prob=0.5, subset_len=args.subset_len),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
     val_loader = DataLoader(CTSubset('../data/ct-rsna/validation/', 'validation_set_dropped_nans.csv',
                                         size=256, flip_prob=0., subset_len=1024),
@@ -277,7 +277,7 @@ if __name__ == "__main__":
                      )
 
     optimizer = Adam(list(unet.parameters()), lr=args.lr)
-    lr_scheduler = CosineAnnealingLR(optimizer, args.num_epochs, eta_min=1e-6)
+    lr_scheduler = CosineAnnealingLR(optimizer, args.num_epochs, eta_min=5e-8)
 
     # TODO - the autoencoder does not train with MSE,
     L = torch.nn.MSELoss().to(device)

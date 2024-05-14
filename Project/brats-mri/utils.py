@@ -90,4 +90,5 @@ def create_arg_parser():
     
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--subset_len', type=int, default=1024)
     return parser
