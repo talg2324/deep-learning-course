@@ -142,6 +142,7 @@ class DiffusionClassifierInterface:
 
         l1_c_errs = []
         l2_c_errs = []
+
         for c_hypo in tqdm.auto.tqdm(c_hypotheses, desc="class hypothsis"):
             l2_mean_err, l1_mean_err = self.eval_class_hypothesis_per_batch(x0=x0,
                                                                             c=c_hypo,
@@ -152,6 +153,11 @@ class DiffusionClassifierInterface:
 
         l2_label_pred = self.extract_prediction_from_errs(l2_c_errs)
         l1_label_pred = self.extract_prediction_from_errs(l1_c_errs)
+        # work with all hypotheses in parallel
+        # l2_label_pred, l1_label_pred = self.eval_all_class_hypotheses_per_batch(x0=x0,
+        #                                                                         c=c_hypotheses,
+        #                                                                         n_trials=n_trials,
+        #                                                                         t_sampling_stride=t_sampling_stride)
         return l2_label_pred, l1_label_pred
 
     @torch.no_grad()
@@ -191,7 +197,7 @@ class DiffusionClassifierInterface:
             error = torch.cat([l2_loss.unsqueeze(1),
                                l1_loss.unsqueeze(1)], dim=1)
 
-            pred_errors = error.cpu()
+            pred_errors = error.detach().cpu()
 
         mean_pred_errors = pred_errors.view(self.n_train_timesteps // t_sampling_stride,
                                             n_trials,
@@ -200,6 +206,58 @@ class DiffusionClassifierInterface:
         l2_mean_err = mean_pred_errors[0]
         l1_mean_err = mean_pred_errors[1]
         return l2_mean_err, l1_mean_err
+
+    @torch.no_grad()
+    def eval_all_class_hypotheses_per_batch(self,
+                                            x0,
+                                            c_hypotheses,
+                                            n_trials: int = 1,
+                                            t_sampling_stride: int = 5):
+        """
+        runs the core algorithm of the classifier.
+        calculates noise prediction errors given the conditioning c.
+        returns noise prediction errors
+        TODO - currently L2, L1 only. VLB is not supported as LatentDiffusion does not predict the variance
+
+        :param x0: diffusion model input - latent representation of the input batch
+        :param c: conditioning
+        :param n_trials: number of trials to do for each sample. TODO - need to revisit how this is different than the batch...
+        :param t_sampling_stride: sampling rate of the diffusion time steps
+        """
+        ts = []
+        batch_size = x0.shape[0]
+        pred_errors = torch.zeros(self.n_train_timesteps // t_sampling_stride * n_trials, 2, device='cpu')
+
+        for t in range(t_sampling_stride // 2, self.n_train_timesteps, t_sampling_stride):
+            ts.extend([t] * n_trials)
+
+        # flatten hypotheses
+        c_hypotheses_tensor_list = [c['class_label'].repeat(len(ts)) for c in c_hypotheses]
+        c_concat = {'class_label': torch.cat(c_hypotheses_tensor_list)}
+
+        # duplicate for each class hypothesis
+        ts = ts * len(c_hypotheses)
+        t_input = torch.tensor(ts).to(self.device)
+        with autocast(enabled=True):
+            noise = self.noise[:len(t_input)]
+
+            noise_pred = self.get_noise_prediction(x0, t_input, noise, c_concat)
+
+            l2_loss = mean_flat((noise - noise_pred) ** 2)
+            l1_loss = mean_flat(torch.abs(noise - noise_pred))
+            error = torch.cat([l2_loss.unsqueeze(1),
+                               l1_loss.unsqueeze(1)], dim=1)
+
+            pred_errors = error.detach().cpu()
+
+        mean_pred_errors = pred_errors.view(len(c_hypotheses), self.n_train_timesteps // t_sampling_stride,
+                                            n_trials,
+                                            *pred_errors.shape[1:]).mean(dim=(1, 2))
+        min_err_entries = mean_pred_errors.argmin(dim=0)
+        label_pred_l2 = c_hypotheses[int(min_err_entries[0])]['class_label'][0].detach().cpu()
+        label_pred_l1 = c_hypotheses[int(min_err_entries[1])]['class_label'][0].detach().cpu()
+
+        return label_pred_l2, label_pred_l1
 
     @staticmethod
     def extract_prediction_from_errs(errs_and_labels_list):
