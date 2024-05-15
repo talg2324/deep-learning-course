@@ -14,7 +14,7 @@ python main.py \
   --val_every_n_epochs 100 \
   --name ${name} \
   --conditioning class \
-  --batch_size 64 \
+  --batch_size 32 \
   --lr 0.0001 \
   --config inference_new.json \
   --subset_len 2048 \
