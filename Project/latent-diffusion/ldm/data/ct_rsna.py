@@ -20,7 +20,7 @@ class CTDataset(Dataset):
 
         self.transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize(size),
+            transforms.Resize((size, size)),
             transforms.RandomHorizontalFlip(flip_prob),
         ])
 
