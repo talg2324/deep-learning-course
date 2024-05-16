@@ -48,11 +48,13 @@ def run_init():
 
 
 def fetch_last_ckpt_files_from_ckpt_dir(ckpt_dir):
-    autoencoder_ckpt_files = [f for f in os.listdir(ckpt_dir) if 'autoencoder' in f]
-    unet_ckpt_files = [f for f in os.listdir(ckpt_dir) if 'diffusion' in f]
-    if len(autoencoder_ckpt_files) == 0 or len(unet_ckpt_files) == 0:
+    autoencoder_ckpt_file, last_epoch_num = utils.find_highest_epoch_file(ckpt_dir, "autoencoder")
+    unet_ckpt_file, _ = utils.find_highest_epoch_file(ckpt_dir, "diffusion")
+
+    if not unet_ckpt_file or not autoencoder_ckpt_file:
         raise ValueError(f"ckpt dir {ckpt_dir} is empty. cannot resume training from it.")
-    return autoencoder_ckpt_files[-1], unet_ckpt_files[-1]
+    return os.path.join(ckpt_dir, autoencoder_ckpt_file), os.path.join(ckpt_dir, unet_ckpt_file), last_epoch_num
+
 
 def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
     autoencoder_ckpt_path = os.path.join(logdir, f"autoencoder_epoch_{epoch}.ckpt")
@@ -257,9 +259,10 @@ if __name__ == "__main__":
                                         size=256, flip_prob=0., subset_len=1024),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
     if args.resume_from_ckpt is not None:
-        autoenc_ckpt_path, unet_ckpt_path = fetch_last_ckpt_files_from_ckpt_dir(args.resume_from_ckpt)
+        autoenc_ckpt_path, unet_ckpt_path, last_epoch = fetch_last_ckpt_files_from_ckpt_dir(args.resume_from_ckpt)
     else:
         autoenc_ckpt_path, unet_ckpt_path = None, None
+        last_epoch = 0
     # Initialize models
     autoencoder = load_autoencoder(bundle_target=BUNDLE,
                                    override_model_cfg_json=args.config,
@@ -303,7 +306,7 @@ if __name__ == "__main__":
     log_ims(unet, autoencoder, inferer, sample_noise_shape,
             im_tag, first(val_loader), classes_list=np.unique(train_loader.dataset.labels).tolist())
 
-    for e in range(1, args.num_epochs+1):
+    for e in range(1+last_epoch, args.num_epochs+1+last_epoch):
         print(f'Epoch #[{e}/{args.num_epochs}]:')
         
         

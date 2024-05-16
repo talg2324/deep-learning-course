@@ -1,9 +1,14 @@
 import os
+import re
+
 import monai
 import torch
 import shutil
 from monai.bundle import ConfigParser
 import argparse
+
+
+
 
 PRETRAINED_MODEL_NAME = 'brats_mri_axial_slices_generative_diffusion'
 
@@ -92,3 +97,25 @@ def create_arg_parser():
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--subset_len', type=int, default=1024)
     return parser
+
+
+def find_highest_epoch_file(directory, pattern_prefix):
+    # Regular expression pattern to match the filenames and extract the epoch number
+    pattern = re.compile(rf'{pattern_prefix}_epoch_(\d+)\.ckpt')
+
+    # List all files in the directory
+    files = os.listdir(directory)
+
+    max_epoch = -1
+    max_epoch_file = None
+
+    for file in files:
+        match = pattern.match(file)
+        if match:
+            epoch_num = int(match.group(1))
+            if epoch_num > max_epoch:
+                max_epoch = epoch_num
+                max_epoch_file = file
+
+    return max_epoch_file, max_epoch
+
