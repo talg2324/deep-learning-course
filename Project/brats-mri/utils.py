@@ -67,7 +67,7 @@ def create_arg_parser():
 
     # Argument for resuming training from a checkpoint
     parser.add_argument('--resume_from_ckpt', type=str, default=None,
-                        help='Path to a checkpoint file to resume training from')
+                        help='Path to a checkpoint directory containing autoencoder & diffusion ckpt files to resume training from')
 
     # Argument for name of the model
     parser.add_argument('--name', type=str, default='model',

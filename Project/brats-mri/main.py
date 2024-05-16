@@ -35,7 +35,7 @@ def run_init():
     print("Started training Model:", args.name)
     print("Random seed: ", args.seed)
     print("Config json: ", args.config)
-    print("Resuming training from checkpoint: ", args.resume_from_ckpt)
+    print("Resuming unet training from checkpoint: ", args.resume_from_ckpt)
     print("Number of epochs: ", args.num_epochs)
     print(f"Performing validation every {args.val_every_n_epochs} epochs")
     if args.save_ckpt_every_n:
@@ -46,6 +46,13 @@ def run_init():
 
     return args
 
+
+def fetch_last_ckpt_files_from_ckpt_dir(ckpt_dir):
+    autoencoder_ckpt_files = [f for f in os.listdir(ckpt_dir) if 'autoencoder' in f]
+    unet_ckpt_files = [f for f in os.listdir(ckpt_dir) if 'diffusion' in f]
+    if len(autoencoder_ckpt_files) == 0 or len(unet_ckpt_files) == 0:
+        raise ValueError(f"ckpt dir {ckpt_dir} is empty. cannot resume training from it.")
+    return autoencoder_ckpt_files[-1], unet_ckpt_files[-1]
 
 def save_epoch(logdir: str, epoch: int, autoencoder, unet, losses_dict: dict):
     autoencoder_ckpt_path = os.path.join(logdir, f"autoencoder_epoch_{epoch}.ckpt")
@@ -249,11 +256,14 @@ if __name__ == "__main__":
     val_loader = DataLoader(CTSubset('../data/ct-rsna/validation/', 'validation_set_dropped_nans.csv',
                                         size=256, flip_prob=0., subset_len=1024),
                                         batch_size=args.batch_size, shuffle=True, drop_last=True)
-
+    if args.resume_from_ckpt is not None:
+        autoenc_ckpt_path, unet_ckpt_path = fetch_last_ckpt_files_from_ckpt_dir(args.resume_from_ckpt)
+    else:
+        autoenc_ckpt_path, unet_ckpt_path = None, None
     # Initialize models
     autoencoder = load_autoencoder(bundle_target=BUNDLE,
                                    override_model_cfg_json=args.config,
-                                   override_weights_load_path=args.resume_from_ckpt)
+                                   override_weights_load_path=autoenc_ckpt_path)
 
     config = utils.model_config(BUNDLE, 'train_diffusion.json')
     scale_factor = compute_scale_factor(autoencoder, train_loader, device)
@@ -273,7 +283,7 @@ if __name__ == "__main__":
                      use_conditioning=use_conditioning,
                      context_conditioning=use_context,
                      override_model_cfg_json=args.config,
-                     override_weights_load_path=args.resume_from_ckpt,
+                     override_weights_load_path=unet_ckpt_path,
                      )
 
     optimizer = Adam(list(unet.parameters()), lr=args.lr)
