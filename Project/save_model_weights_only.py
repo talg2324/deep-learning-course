@@ -18,7 +18,7 @@ if __name__ == "__main__":
     src = torch.load(path_to_model)
     template['state_dict'] = src['state_dict']
     training_dir = "/".join(path_to_model.split("/")[:-1])
-    num_weight_only_files = len(glob.glob('*_weights_only*'))
+    num_weight_only_files = len(glob.glob(os.path.join(training_dir, '*_weights_only*')))
 
     path_to_model_weights_only = path_to_model.split(".")[0] + f"_weights_only_{num_weight_only_files}.ckpt"
     torch.save(template, path_to_model_weights_only)
