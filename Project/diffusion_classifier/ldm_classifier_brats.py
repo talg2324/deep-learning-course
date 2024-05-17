@@ -11,6 +11,11 @@ from torch.cuda.amp import autocast
 from generative.networks.nets import DiffusionModelUNet, AutoencoderKL
 from diffusion_classifier.diffusion_classifier_interface import DiffusionClassifierInterface
 
+from generative.inferers import LatentDiffusionInferer
+
+BUNDLE = '../brats-mri/brats_mri_class_cond/'
+sys.path.append(BUNDLE)
+from scripts.inferer import LatentDiffusionInfererWithClassConditioning
 
 class MonaiLdmClassifier(DiffusionClassifierInterface):
     def __init__(self,
@@ -61,12 +66,24 @@ class MonaiLdmClassifier(DiffusionClassifierInterface):
 
     def get_noise_prediction(self, x0, t, noise, c):
         c_repeat = c['class_label'].repeat(len(t))
-        return self.inferer(inputs=x0,
-                            autoencoder_model=self.autoencoder,
-                            diffusion_model=self.unet,
-                            noise=noise,
-                            timesteps=t,
-                            condition=c_repeat.view(-1, 1, 1).to(dtype=torch.float32))
+        if isinstance(self.inferer, LatentDiffusionInfererWithClassConditioning):
+            return self.inferer(inputs=x0,
+                                autoencoder_model=self.autoencoder,
+                                diffusion_model=self.unet,
+                                noise=noise,
+                                timesteps=t,
+                                condition=c_repeat.view(-1, 1, 1).to(dtype=torch.float32),
+                                class_labels=c_repeat.view(-1, 1, 1).to(dtype=torch.float32))
+
+        elif isinstance(self.inferer, LatentDiffusionInferer):
+            return self.inferer(inputs=x0,
+                                autoencoder_model=self.autoencoder,
+                                diffusion_model=self.unet,
+                                noise=noise,
+                                timesteps=t,
+                                condition=c_repeat.view(-1, 1, 1).to(dtype=torch.float32))
+        else:
+            raise ValueError(f"self.inferer {self.inferer} is of wrong class! cannot work. crashing.")
                             
     def get_latent_batch(self, batch):
         """
