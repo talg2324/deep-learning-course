@@ -72,8 +72,8 @@ class MonaiLdmClassifier(DiffusionClassifierInterface):
                                 diffusion_model=self.unet,
                                 noise=noise,
                                 timesteps=t,
-                                condition=c_repeat.view(-1, 1, 1).to(dtype=torch.float32),
-                                class_labels=c_repeat.view(-1, 1, 1).to(dtype=torch.float32))
+                                condition=None,
+                                class_labels=c_repeat)
 
         elif isinstance(self.inferer, LatentDiffusionInferer):
             return self.inferer(inputs=x0,
