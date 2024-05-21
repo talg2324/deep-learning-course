@@ -106,7 +106,7 @@ class DiffusionClassifierInterface:
         l2_labels_pred = []
         l1_labels_pred = []
         true_labels = []
-        for batch in tqdm.auto.tqdm(loader, desc="dataset samples"):
+        for batch in tqdm.tqdm(loader, desc="dataset samples"):
             c_hypotheses = self.get_class_hypotheses_for_batch(batch_size=batch_size, classes=classes)
             # make sure batch is on device!
             for k in batch.keys():
@@ -143,7 +143,7 @@ class DiffusionClassifierInterface:
         l1_c_errs = []
         l2_c_errs = []
 
-        for c_hypo in tqdm.auto.tqdm(c_hypotheses, desc="class hypothsis"):
+        for c_hypo in tqdm.tqdm(c_hypotheses, desc="class hypothsis"):
             l2_mean_err, l1_mean_err = self.eval_class_hypothesis_per_batch(x0=x0,
                                                                             c=c_hypo,
                                                                             n_trials=n_trials,
