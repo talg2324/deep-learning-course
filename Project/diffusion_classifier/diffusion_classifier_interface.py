@@ -105,6 +105,7 @@ class DiffusionClassifierInterface:
         loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
         l2_labels_pred = []
         l1_labels_pred = []
+        all_samples_labels_log_probs = []
         true_labels = []
         for batch in tqdm.tqdm(loader, desc="dataset samples"):
             c_hypotheses = self.get_class_hypotheses_for_batch(batch_size=batch_size, classes=classes)
@@ -115,13 +116,13 @@ class DiffusionClassifierInterface:
                 except:
                     pass
                     
-            l2_label_pred, l1_label_pred = self.classify_batch(batch, c_hypotheses, n_trials, t_sampling_stride)
+            l2_label_pred, l1_label_pred, labels_log_probs = self.classify_batch(batch, c_hypotheses, n_trials, t_sampling_stride)
 
             true_labels.extend(batch['class_label'].cpu())
             l2_labels_pred.append(l2_label_pred)
             l1_labels_pred.append(l1_label_pred)
-
-        return l2_labels_pred, l1_labels_pred, true_labels
+            all_samples_labels_log_probs.append(labels_log_probs)
+        return l2_labels_pred, l1_labels_pred, true_labels, all_samples_labels_log_probs
 
     
     @torch.no_grad()
@@ -151,14 +152,14 @@ class DiffusionClassifierInterface:
             l2_c_errs.append((l2_mean_err.cpu(), c_hypo['class_label'].cpu()))
             l1_c_errs.append((l1_mean_err.cpu(), c_hypo['class_label'].cpu()))
 
-        l2_label_pred = self.extract_prediction_from_errs(l2_c_errs)
-        l1_label_pred = self.extract_prediction_from_errs(l1_c_errs)
+        l2_label_pred, labels_log_probs = self.extract_prediction_from_errs(l2_c_errs)
+        l1_label_pred, _ = self.extract_prediction_from_errs(l1_c_errs)
         # work with all hypotheses in parallel
         # l2_label_pred, l1_label_pred = self.eval_all_class_hypotheses_per_batch(x0=x0,
         #                                                                         c=c_hypotheses,
         #                                                                         n_trials=n_trials,
         #                                                                         t_sampling_stride=t_sampling_stride)
-        return l2_label_pred, l1_label_pred
+        return l2_label_pred, l1_label_pred, labels_log_probs
 
     @torch.no_grad()
     def eval_class_hypothesis_per_batch(self,
@@ -266,7 +267,11 @@ class DiffusionClassifierInterface:
         """
         sorted_errs_and_labels = sorted(errs_and_labels_list, key=lambda x: x[0])
         pred_label = sorted_errs_and_labels[0][1]
-        return pred_label
+        errs = torch.tensor([x[0] for x in sorted_errs_and_labels])
+
+        # using the approximation of log(c|x) as  -1 * E[norm(noise_true - noise_estimate)**2]
+        labels_log_probs = (-1 * errs) / np.sum(-1 * errs)
+        return pred_label, labels_log_probs
 
     @staticmethod
     def trim_cond_dict(cond_dict, length):
