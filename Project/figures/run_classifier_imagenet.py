@@ -63,7 +63,7 @@ def get_already_calculated(clf_dir, predictions_file_name):
         n_already_calculated = len(pred_dict.keys())
     else:
         n_already_calculated = 0
-    return n_already_calculated
+    return n_already_calculated, pred_dict
 
 
 if __name__ == "__main__":
@@ -73,17 +73,14 @@ if __name__ == "__main__":
   val_dir = './data/ct-rsna/validation'
   output_dir = './data/outputs'
   
-  subset_len = 128
+  subset_len = 256
   predictions_file_name = f"predictions_{subset_len}_samples"
 
   ds = CTSubset(data_dir=val_dir, labels_file='validation_set_dropped_nans.csv',
                 size=256, flip_prob=0., subset_len=subset_len)
 
   trained_models = [
-    '2024-05-10T22-04-53_imagenet-256',
-    '2024-05-10T21-25-21_imagenet-512',
-    '2024-05-10T17-04-36_imagenet-1024',
-    '2024-05-10T19-48-18_imagenet-2048'
+          '2024-05-17T21-13-47_imagenet-4096-80-epochs-fixed-cycles'
   ]
 
   for training_name in trained_models:
@@ -96,18 +93,21 @@ if __name__ == "__main__":
     training_ckpt_files = get_training_ckpt_files(output_dir, training_name)
     cfg_file = get_training_cfg_file(output_dir, training_name)
 
-    n_already_calculated = get_already_calculated(clf_dir, predictions_file_name)
+    n_already_calculated, pred_dict = get_already_calculated(clf_dir, predictions_file_name)
+    if n_already_calculated > 0:
+        clf_res_per_epoch = pred_dict
     if n_already_calculated == len(training_ckpt_files):
         print(f"training dir: {training_name} already classified for dataset of size {subset_len}, to rerun, make sure you delete previous results!")
-    for i in range(n_already_calculated, len(training_ckpt_files)):
+    for i in range(0, len(training_ckpt_files)):
         ckpt_file = training_ckpt_files[i]
-
         epoch_num = strip_epoch_num_from_ckpt(ckpt_file)
+        if epoch_num in pred_dict.keys():
+            continue
         model = get_model(cfg_file, ckpt_file)
         
         clf = LdmClassifier(model)
         l2_pred, l1_pred, y = clf.classify_dataset(dataset=ds,
-                                                   n_trials=1,
+                                                   n_trials=3,
                                                    t_sampling_stride=50)
         
         clf_res_per_epoch[epoch_num] = {
@@ -121,3 +121,4 @@ if __name__ == "__main__":
         
         del model
         del clf
+        
