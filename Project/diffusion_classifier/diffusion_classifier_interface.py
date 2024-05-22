@@ -270,7 +270,8 @@ class DiffusionClassifierInterface:
         errs = torch.tensor([x[0] for x in sorted_errs_and_labels])
 
         # using the approximation of log(c|x) as  -1 * E[norm(noise_true - noise_estimate)**2]
-        labels_log_probs = (-1 * errs) / np.sum(-1 * errs)
+        labels_probs = torch.exp(-1 * errs) / torch.sum(torch.exp(-1 * errs))
+        labels_log_probs = torch.log(labels_probs)
         return pred_label, labels_log_probs
 
     @staticmethod
