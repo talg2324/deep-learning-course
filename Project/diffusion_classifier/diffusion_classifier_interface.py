@@ -121,8 +121,8 @@ class DiffusionClassifierInterface:
                     pass
                     
             l2_label_pred, l1_label_pred, labels_log_probs = self.classify_batch(batch, c_hypotheses, n_trials, t_sampling_stride)
-
-            ids.extend(batch['id'].cpu())
+            
+            ids.extend(batch['id'])
             true_labels.extend(batch['class_label'].cpu())
             l2_labels_pred.append(l2_label_pred)
             l1_labels_pred.append(l1_label_pred)
