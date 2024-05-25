@@ -106,15 +106,12 @@ if __name__ == "__main__":
         model = get_model(cfg_file, ckpt_file)
         
         clf = LdmClassifier(model)
-        l2_pred, l1_pred, y, labels_log_probs = clf.classify_dataset(dataset=ds,
-                                                   n_trials=3,
-                                                   t_sampling_stride=50)
+        df = clf.classify_dataset(dataset=ds,
+                                  n_trials=3,
+                                  t_sampling_stride=50)
         
         clf_res_per_epoch[epoch_num] = {
-                                        'y': y,
-                                        'l1_pred': l1_pred,
-                                        'l2_pred': l2_pred,
-                                        'labels_log_probs': labels_log_probs
+                                        'df': df
                                         }
 
         with open(os.path.join(clf_dir, f'predictions_{subset_len}_samples'), 'wb') as f:
