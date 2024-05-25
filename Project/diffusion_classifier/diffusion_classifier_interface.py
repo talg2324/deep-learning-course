@@ -4,6 +4,7 @@ import torch
 import sys
 import tqdm
 import numpy as np
+import pandas as pd
 
 from torch.utils.data import Dataset
 from torch.cuda.amp import autocast
@@ -103,10 +104,13 @@ class DiffusionClassifierInterface:
 
         assert batch_size == 1, "classifier batch size refers to a batch in the t_timesteps dimension. but it can only work on one sample at each call. dataloader batch must be set to 1"
         loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
+
+        ids = []
         l2_labels_pred = []
         l1_labels_pred = []
         all_samples_labels_log_probs = []
         true_labels = []
+
         for batch in tqdm.tqdm(loader, desc="dataset samples"):
             c_hypotheses = self.get_class_hypotheses_for_batch(batch_size=batch_size, classes=classes)
             # make sure batch is on device!
@@ -118,13 +122,21 @@ class DiffusionClassifierInterface:
                     
             l2_label_pred, l1_label_pred, labels_log_probs = self.classify_batch(batch, c_hypotheses, n_trials, t_sampling_stride)
 
+            ids.extend(batch['id'].cpu())
             true_labels.extend(batch['class_label'].cpu())
             l2_labels_pred.append(l2_label_pred)
             l1_labels_pred.append(l1_label_pred)
             all_samples_labels_log_probs.append(labels_log_probs)
-        return l2_labels_pred, l1_labels_pred, true_labels, all_samples_labels_log_probs
 
-    
+        df = pd.DataFrame({
+            'id': ids,
+            'true_label': true_labels,
+            'l2_labels_pred': l2_labels_pred,
+            'l1_labels_pred': l1_labels_pred,
+            'log_probs': all_samples_labels_log_probs
+        })
+        return df
+
     @torch.no_grad()
     def classify_batch(self,
                        x0,
