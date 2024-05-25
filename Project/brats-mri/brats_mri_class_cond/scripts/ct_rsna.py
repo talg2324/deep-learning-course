@@ -40,7 +40,6 @@ class CTDataset(Dataset):
         for c in range(nbins):
             print(f'    Class {self.class_names[c]}: {prob[c]:.1f}%')
 
-
     def __len__(self):
         return self.labels.shape[0]
 
@@ -58,8 +57,9 @@ class CTDataset(Dataset):
 
         human_label = self.class_names[int(label)]
 
-        return {'image': im, 'class_label': label, 'human_label': human_label}
-    
+        return {'image': im, 'class_label': label, 'human_label': human_label, 'id': id}
+
+
 class CTSubset(CTDataset):
     """
     Class for testing model on part of the data 
