@@ -96,7 +96,7 @@ class DiffusionClassifierInterface:
         :param t_sampling_stride: sampling rate of the diffusion time steps
         :param classes: classes hypotheses to use for classification. if None is passed, all dataset labels are used
 
-        :returns : List[L2 loss predictions], List[L1 loss predictions], List[gt]
+        :returns : Dataframe{List[L2 loss predictions], List[L1 loss predictions], List[gt], List[id]}
         """
         # TODO - add here verifications to the Dataset object to make sure it has the required attributes
         if classes is None:
@@ -153,7 +153,7 @@ class DiffusionClassifierInterface:
         :param n_trials: number of trials to do for each sample. TODO - need to revisit how this is different than the batch...
         :param t_sampling_stride: sampling rate of the diffusion time steps
 
-        :returns : torch.Tensor(L2 predicted label), torch.Tensor(L1 predicted label)
+        :returns : torch.Tensor(L2 predicted label), torch.Tensor(L1 predicted label), torch.Tensor(labels log probs)
         """
 
         l1_c_errs = []
@@ -282,7 +282,7 @@ class DiffusionClassifierInterface:
         """
         sorted_errs_and_labels = sorted(errs_and_labels_list, key=lambda x: x[0])
         pred_label = sorted_errs_and_labels[0][1]
-        errs = torch.tensor([x[0] for x in sorted_errs_and_labels])
+        errs = torch.tensor([x[0] for x in errs_and_labels_list])
 
         # using the approximation of log(c|x) as  -1 * E[norm(noise_true - noise_estimate)**2]
         labels_probs = torch.exp(-1 * errs) / torch.sum(torch.exp(-1 * errs))
