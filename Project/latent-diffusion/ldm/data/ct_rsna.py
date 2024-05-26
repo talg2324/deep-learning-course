@@ -85,9 +85,11 @@ class MultiSliceCTDataset(CTDataset):
         Dataset.__init__(self)
 
         labels = pd.read_csv(os.path.join(data_dir, labels_file))
-        self.filter_by_slices_per_study(labels, n_slices_in_study)
         unnamed = [c for c in labels.columns if 'Unnamed' in c]
         labels = labels.drop(['sum'] + unnamed, axis=1)
+        self.class_names = labels.columns.to_list()[1:-1]
+        
+        labels = self.filter_by_slices_per_study(labels, n_slices_in_study)
         self.ids = labels['ID']
         self.study_ids = labels['StudyInstanceUID']
         self.data_dir = data_dir
@@ -100,7 +102,6 @@ class MultiSliceCTDataset(CTDataset):
             transforms.RandomHorizontalFlip(flip_prob),
         ])
 
-        self.class_names = labels.columns.to_list()[1:-1]
         self.class_names[0] = 'none'
 
         labels = labels.iloc[:, 1:-1]
@@ -120,14 +121,14 @@ class MultiSliceCTDataset(CTDataset):
     def __getitem__(self, n):
         id = self.ids.iloc[n]
         train_path = os.path.join(self.train_dir, f'{id}.npy')
-        val_path = os.path.join(self.train_dir, f'{id}.npy')
+        val_path = os.path.join(self.val_dir, f'{id}.npy')
         tmp_data_dir = self.data_dir
         if os.path.exists(train_path):
             self.data_dir = self.train_dir
         elif os.path.exists(val_path):
             self.data_dir = self.val_dir
         else:
-            raise Exception("file not found")
+            raise Exception(f"file {id}.npy not found")
 
         item = super(MultiSliceCTDataset, self).__getitem__(n)
         item['study_id'] = self.study_ids.iloc[n]
