@@ -80,15 +80,6 @@ if __name__ == "__main__":
   n_slices_in_study = 10
   predictions_file_name = f"predictions_multi_slice_{n_slices_in_study}_in_study"
 
-  ds = MultiSliceCTDataset(data_dir=data_dir,
-                           train_dir=train_dir,
-                           val_dir=val_dir,
-                           labels_file='unified_set_with_study_id_dropped_nans.csv',
-                           size=256,
-                           flip_prob=0.,
-                           n_slices_in_study=n_slices_in_study
-                           )
-
   trained_models = [
           '2024-05-17T21-13-47_imagenet-4096-80-epochs-fixed-cycles'
   ]
@@ -102,14 +93,23 @@ if __name__ == "__main__":
     clf_res_per_epoch = {}
     training_ckpt_files = get_training_ckpt_files(output_dir, training_name)
     cfg_file = get_training_cfg_file(output_dir, training_name)
+    last_ckpt_file = training_ckpt_files[-1]
 
-    n_already_calculated, pred_dict = get_already_calculated(clf_dir, predictions_file_name)
-    if n_already_calculated > 0:
-        clf_res_per_epoch = pred_dict
-    if n_already_calculated == len(training_ckpt_files):
-        print(f"training dir: {training_name} already classified for multi-slice of size {n_slices_in_study}, to rerun, make sure you delete previous results!")
-    for i in range(0, len(training_ckpt_files)):
-        ckpt_file = training_ckpt_files[i]
+    # n_already_calculated, pred_dict = get_already_calculated(clf_dir, predictions_file_name)
+    # if n_already_calculated > 0:
+    #     clf_res_per_epoch = pred_dict
+    # if n_already_calculated == len(training_ckpt_files):
+    #     print(f"training dir: {training_name} already classified for multi-slice of size {n_slices_in_study}, to rerun, make sure you delete previous results!")
+    for i in [5, 10]:
+        ds = MultiSliceCTDataset(data_dir=data_dir,
+                                 train_dir=train_dir,
+                                 val_dir=val_dir,
+                                 labels_file='unified_set_with_study_id_dropped_nans.csv',
+                                 size=256,
+                                 flip_prob=0.,
+                                 n_slices_in_study=i
+                                 )
+        ckpt_file = last_ckpt_file
         epoch_num = strip_epoch_num_from_ckpt(ckpt_file)
         if epoch_num in clf_res_per_epoch.keys():
             continue
