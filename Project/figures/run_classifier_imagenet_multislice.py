@@ -111,7 +111,7 @@ if __name__ == "__main__":
     for i in range(0, len(training_ckpt_files)):
         ckpt_file = training_ckpt_files[i]
         epoch_num = strip_epoch_num_from_ckpt(ckpt_file)
-        if epoch_num in pred_dict.keys():
+        if epoch_num in clf_res_per_epoch.keys():
             continue
         model = get_model(cfg_file, ckpt_file)
         
