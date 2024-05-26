@@ -118,7 +118,8 @@ if __name__ == "__main__":
         clf = LdmClassifier(model)
         df = clf.classify_dataset(dataset=ds,
                                   n_trials=3,
-                                  t_sampling_stride=50)
+                                  t_sampling_stride=50,
+                                  classes=[0, 1, 2, 3, 4, 5])
         
         clf_res_per_epoch[epoch_num] = {
                                         'df': df
