@@ -62,6 +62,7 @@ def get_already_calculated(clf_dir, predictions_file_name):
             pred_dict = pickle.load(f)
         n_already_calculated = len(pred_dict.keys())
     else:
+        pred_dict = None
         n_already_calculated = 0
     return n_already_calculated, pred_dict
 
