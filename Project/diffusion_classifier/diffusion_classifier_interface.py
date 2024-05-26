@@ -133,10 +133,10 @@ class DiffusionClassifierInterface:
         df = pd.DataFrame({
             'id': ids,
             'true_label': true_labels,
-            'l2_labels_pred': l2_labels_pred,
-            'l1_labels_pred': l1_labels_pred,
+            'l2_label_pred': l2_labels_pred,
+            'l1_label_pred': l1_labels_pred,
             'log_probs': all_samples_labels_log_probs,
-            'study_ids': study_ids
+            'study_id': study_ids
         })
         return df
 
