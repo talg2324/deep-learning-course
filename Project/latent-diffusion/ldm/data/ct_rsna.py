@@ -81,7 +81,7 @@ class MultiSliceCTDataset(CTDataset):
     Class for testing model on part of the data
     """
 
-    def __init__(self, data_dir, labels_file, size, flip_prob, n_slices_in_study) -> None:
+    def __init__(self, data_dir, train_dir, val_dir, labels_file, size, flip_prob, n_slices_in_study) -> None:
         Dataset.__init__(self)
 
         labels = pd.read_csv(os.path.join(data_dir, labels_file))
@@ -91,6 +91,8 @@ class MultiSliceCTDataset(CTDataset):
         self.ids = labels['ID']
         self.study_ids = labels['StudyInstanceUID']
         self.data_dir = data_dir
+        self.train_dir = train_dir
+        self.val_dir = val_dir
 
         self.transform = transforms.Compose([
             transforms.ToTensor(),
@@ -116,8 +118,20 @@ class MultiSliceCTDataset(CTDataset):
         return df_combined
 
     def __getitem__(self, n):
+        id = self.ids.iloc[n]
+        train_path = os.path.join(self.train_dir, f'{id}.npy')
+        val_path = os.path.join(self.train_dir, f'{id}.npy')
+        tmp_data_dir = self.data_dir
+        if os.path.exists(train_path):
+            self.data_dir = self.train_dir
+        elif os.path.exists(val_path):
+            self.data_dir = self.val_dir
+        else:
+            raise Exception("file not found")
+
         item = super(MultiSliceCTDataset, self).__getitem__(n)
         item['study_id'] = self.study_ids.iloc[n]
+        self.data_dir = tmp_data_dir
         return item
 
 
