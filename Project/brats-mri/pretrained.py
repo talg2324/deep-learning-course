@@ -24,7 +24,7 @@ def load_autoencoder(bundle_target,
         else config.get_parsed_content('load_autoencoder_path')
     )
     
-    # autoencoder.load_state_dict(torch.load(weights_load_path, map_location=device), strict=False)
+    autoencoder.load_state_dict(torch.load(weights_load_path, map_location=device), strict=False)
     return autoencoder
 
 
