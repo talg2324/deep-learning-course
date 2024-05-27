@@ -76,9 +76,6 @@ if __name__ == "__main__":
   data_dir = './data/ct-rsna'
 
   output_dir = './data/outputs'
-  
-  n_slices_in_study = 10
-  predictions_file_name = f"predictions_multi_slice_{n_slices_in_study}_in_study"
 
   trained_models = [
           '2024-05-17T21-13-47_imagenet-4096-80-epochs-fixed-cycles'
@@ -90,7 +87,7 @@ if __name__ == "__main__":
     if not os.path.exists(clf_dir):
         os.makedirs(clf_dir)
 
-    clf_res_per_epoch = {}
+    clf_res_per_slices = {}
     training_ckpt_files = get_training_ckpt_files(output_dir, training_name)
     cfg_file = get_training_cfg_file(output_dir, training_name)
     last_ckpt_file = training_ckpt_files[-1]
@@ -100,18 +97,23 @@ if __name__ == "__main__":
     #     clf_res_per_epoch = pred_dict
     # if n_already_calculated == len(training_ckpt_files):
     #     print(f"training dir: {training_name} already classified for multi-slice of size {n_slices_in_study}, to rerun, make sure you delete previous results!")
-    for i in [5, 10]:
+    predictions_file_name = f"predictions_multi_slices"
+    for n_slices_in_study in [3, 5, 7, 10]:
+
         ds = MultiSliceCTDataset(data_dir=data_dir,
                                  train_dir=train_dir,
                                  val_dir=val_dir,
                                  labels_file='unified_set_with_study_id_dropped_nans.csv',
                                  size=256,
                                  flip_prob=0.,
-                                 n_slices_in_study=i
+                                 n_slices_in_study=n_slices_in_study
                                  )
+        if len(ds) == 0:
+            continue
+
         ckpt_file = last_ckpt_file
         epoch_num = strip_epoch_num_from_ckpt(ckpt_file)
-        if epoch_num in clf_res_per_epoch.keys():
+        if n_slices_in_study in clf_res_per_slices.keys():
             continue
         model = get_model(cfg_file, ckpt_file)
         
@@ -121,12 +123,12 @@ if __name__ == "__main__":
                                   t_sampling_stride=50,
                                   classes=[0, 1, 2, 3, 4, 5])
         
-        clf_res_per_epoch[epoch_num] = {
+        clf_res_per_slices[n_slices_in_study] = {
                                         'df': df
                                         }
 
         with open(os.path.join(clf_dir, predictions_file_name), 'wb') as f:
-            pickle.dump(clf_res_per_epoch, f)
+            pickle.dump(clf_res_per_slices, f)
         
         del model
         del clf
