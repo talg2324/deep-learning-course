@@ -92,13 +92,16 @@ if __name__ == "__main__":
     cfg_file = get_training_cfg_file(output_dir, training_name)
     last_ckpt_file = training_ckpt_files[-1]
 
-    # n_already_calculated, pred_dict = get_already_calculated(clf_dir, predictions_file_name)
-    # if n_already_calculated > 0:
-    #     clf_res_per_epoch = pred_dict
-    # if n_already_calculated == len(training_ckpt_files):
-    #     print(f"training dir: {training_name} already classified for multi-slice of size {n_slices_in_study}, to rerun, make sure you delete previous results!")
+    multi_slices = [10, 7, 5, 3]
     predictions_file_name = f"predictions_multi_slices"
-    for n_slices_in_study in [3, 5, 7, 10]:
+    n_already_calculated, pred_dict = get_already_calculated(clf_dir, predictions_file_name)
+
+    if n_already_calculated > 0:
+        clf_res_per_slices = pred_dict
+    if n_already_calculated == len(training_ckpt_files):
+        print(f"training dir: {training_name} already classified for multi-slice of size {n_slices_in_study}, to rerun, make sure you delete previous results!")
+
+    for n_slices_in_study in multi_slices:
 
         ds = MultiSliceCTDataset(data_dir=data_dir,
                                  train_dir=train_dir,
@@ -112,7 +115,7 @@ if __name__ == "__main__":
             continue
 
         ckpt_file = last_ckpt_file
-        epoch_num = strip_epoch_num_from_ckpt(ckpt_file)
+        # epoch_num = strip_epoch_num_from_ckpt(ckpt_file)
         if n_slices_in_study in clf_res_per_slices.keys():
             continue
         model = get_model(cfg_file, ckpt_file)
