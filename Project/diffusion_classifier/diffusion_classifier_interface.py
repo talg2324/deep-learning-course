@@ -124,7 +124,7 @@ class DiffusionClassifierInterface:
             l2_label_pred, l1_label_pred, labels_log_probs = self.classify_batch(batch, c_hypotheses, n_trials, t_sampling_stride)
             
             ids.extend(batch['id'])
-            study_ids.extend(batch['study_id'] if 'study_id' in batch.keys() else None)
+            study_ids.extend(batch['study_id'] if 'study_id' in batch.keys() else [None])
             true_labels.extend(batch['class_label'].cpu())
             l2_labels_pred.append(l2_label_pred)
             l1_labels_pred.append(l1_label_pred)
