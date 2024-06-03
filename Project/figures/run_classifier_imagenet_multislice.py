@@ -78,7 +78,8 @@ if __name__ == "__main__":
   output_dir = './data/outputs'
 
   trained_models = [
-          '2024-05-17T21-13-47_imagenet-4096-80-epochs-fixed-cycles'
+          # '2024-05-17T21-13-47_imagenet-4096-80-epochs-fixed-cycles'
+      '2024-06-01T09-24-37_imagenet-10800-80-epochs-fixed-cycles'
   ]
 
   for training_name in trained_models:
@@ -92,7 +93,7 @@ if __name__ == "__main__":
     cfg_file = get_training_cfg_file(output_dir, training_name)
     last_ckpt_file = training_ckpt_files[-1]
 
-    multi_slices = [10, 7, 5, 3]
+    multi_slices = [10, 9, 8, 7,6, 5,4, 3]
     predictions_file_name = f"predictions_multi_slices"
     n_already_calculated, pred_dict = get_already_calculated(clf_dir, predictions_file_name)
 

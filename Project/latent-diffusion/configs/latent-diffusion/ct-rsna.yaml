@@ -19,8 +19,8 @@ model:
     scheduler_config:
       target: ldm.lr_scheduler.LambdaLinearScheduler
       params:
-        warm_up_steps: [64]  # 1 epoch x 256 first batches = 4096 train samples
-        cycle_lengths: [20480] # 80 epochs * 256 batchs (4096 samples/16 batchsize) = 20480
+        warm_up_steps: [256]  # 1 epoch x 680 first batches = 10880 train samples
+        cycle_lengths: [54400] # 80 epochs * 680 batchs (10880 samples/16 batchsize) = 54400
         f_start: [1.e-6]
         f_max: [5.e-5]
         f_min: [ 1.e-6]
@@ -89,7 +89,7 @@ data:
         labels_file: "train_set_dropped_nans.csv"
         size: 256
         flip_prob: 0.5
-        subset_len: 4096
+        subset_len: 10880
     validation:
       target: ldm.data.ct_rsna.CTSubset
       params:

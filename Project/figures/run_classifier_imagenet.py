@@ -63,6 +63,7 @@ def get_already_calculated(clf_dir, predictions_file_name):
         n_already_calculated = len(pred_dict.keys())
     else:
         n_already_calculated = 0
+        pred_dict = None
     return n_already_calculated, pred_dict
 
 
@@ -73,14 +74,14 @@ if __name__ == "__main__":
   val_dir = './data/ct-rsna/validation'
   output_dir = './data/outputs'
   
-  subset_len = 256
+  subset_len = 512
   predictions_file_name = f"predictions_{subset_len}_samples"
 
   ds = CTSubset(data_dir=val_dir, labels_file='validation_set_dropped_nans.csv',
                 size=256, flip_prob=0., subset_len=subset_len)
 
   trained_models = [
-          '2024-05-17T21-13-47_imagenet-4096-80-epochs-fixed-cycles'
+          '2024-06-01T09-24-37_imagenet-10800-80-epochs-fixed-cycles'
   ]
 
   for training_name in trained_models:
@@ -99,9 +100,10 @@ if __name__ == "__main__":
     if n_already_calculated == len(training_ckpt_files):
         print(f"training dir: {training_name} already classified for dataset of size {subset_len}, to rerun, make sure you delete previous results!")
     for i in range(0, len(training_ckpt_files)):
+        i = len(training_ckpt_files) - 1
         ckpt_file = training_ckpt_files[i]
         epoch_num = strip_epoch_num_from_ckpt(ckpt_file)
-        if epoch_num in pred_dict.keys():
+        if epoch_num in clf_res_per_epoch.keys():
             continue
         model = get_model(cfg_file, ckpt_file)
         

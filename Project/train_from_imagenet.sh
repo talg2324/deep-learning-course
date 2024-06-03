@@ -14,7 +14,7 @@ python main_shortened.py \
   --base configs/latent-diffusion/ct-rsna.yaml \
   -t \
   --gpus 0, \
-  --max_epochs 20 \
+  --max_epochs 80 \
   --num_sanity_val_steps 0 \
   --scale_lr False \
   --logdir ../data/outputs \
