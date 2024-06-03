@@ -78,7 +78,7 @@ def load_unet(bundle_target,
         if override_weights_load_path is not None
         else config.get_parsed_content('load_diffusion_path')
     )
-    pretrained = torch.load(weights_load_path, map_location=device)
+    # pretrained = torch.load(weights_load_path, map_location=device)
 
 
     """
@@ -89,10 +89,10 @@ def load_unet(bundle_target,
     We successfully loaded (len(pretrained) - len(unexpected)) / len(pretrained) keys
     Missing keys don't matter- they are parameters that didn't exist in the src model
     """
-    missing, unexpected = unet.load_state_dict(pretrained, strict=False)
+    # missing, unexpected = unet.load_state_dict(pretrained, strict=False)
 
-    if unexpected:
-        success_rate = 100. * (len(pretrained) - len(unexpected)) / len(pretrained)
-        print(f"Unable to load complete model: successfully loaded {success_rate:.1f}% of weights")
+    # if unexpected:
+    #     success_rate = 100. * (len(pretrained) - len(unexpected)) / len(pretrained)
+    #     print(f"Unable to load complete model: successfully loaded {success_rate:.1f}% of weights")
 
     return unet

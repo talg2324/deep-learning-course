@@ -17,5 +17,5 @@ python main.py \
   --batch_size 32 \
   --lr 0.0001 \
   --config inference_new.json \
-  --subset_len 2048 \
+  --subset_len 4096 \
   --save_ckpt_every_n 100
