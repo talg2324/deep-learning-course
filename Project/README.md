@@ -18,10 +18,13 @@ A detailed description of the steps needed to initialize the environment for the
 
 ## Results
 We successfully fine-tuned both models' autoencoders to support CT data:
+
 ![image](./figures/KLVAE.png)
 
 After training both models, we found that the BraTS model was too small to be transferred onto our dataset. The ImageNet model performed quite well:
+
 ![image](./figures/DiffusionGeneration.png)
 
 Finally we evaluated the ImageNet-based model as a classifer and saw a clear trend highlighting the importance of dataset size:
+
 ![image](./figures/DataSize.png)
